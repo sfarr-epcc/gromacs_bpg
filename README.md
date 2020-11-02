@@ -1,3 +1,2 @@
-# gromacs_bpg
 
-GROMACS best practice guide
+[GROMACS best practice guide index](index.rst) (restructured text)
