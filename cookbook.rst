@@ -85,7 +85,7 @@ Piz Daint (CSCS, Switzerland)
 
 Build instructions Piz Daint's XC50 GPU partition: 
 
-.. include:: build/pizdaint/daint-gpu/gromacs-2020.2.rst
+.. include:: cookbook/build/pizdaint/daint-gpu/gromacs-2020.2.rst
    
 
 

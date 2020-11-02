@@ -1,2 +1,3 @@
 
-[GROMACS best practice guide index](index.rst) (restructured text)
+[index](index.rst) (restructured text)
+[cookbook](cookbook.rst) (restructured text)
