@@ -32,6 +32,7 @@ CPU + GPU
 +++++++++
 - Default one thread-mpi rank per GPU (default) likely optimal
   - use ``-ntomp`` to use remaining CPU cores (similar considerations for hyperthreading/SMT as for CPU only nodes)
+  - if there are more processor sockets than GPUs, probably want one rank per socket and share access to the same GPU using ``-gputasks`` mapping
 
 GPU offload options:
 
