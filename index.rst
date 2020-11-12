@@ -4,6 +4,13 @@
 
 \ 
 
-.. include:: performance_cookbook.rst
 
-	     
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   cookbook
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
