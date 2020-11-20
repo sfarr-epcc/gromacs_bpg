@@ -5,21 +5,28 @@ Suggested workflow for GROMACS simulations
 This part of the GROMACS best practice guide walks you through a suggested
 workflow for preparing, running, and analysing the results of your GROMACS
 simulations. There are already many very good tutorials available to teach 
-new users how to do this. Where applicable, we will refer to these. Here, 
-we have collated and compiled the suggestions of these tutorials into what 
-we believe to be the best way to prepare and run a GROMACS simulation.
+new users how to do this. Here, we have collated and compiled the suggestions 
+of these tutorials into what we believe to be the best way to prepare and run 
+a GROMACS simulation.
 
 This section is divided as follows: first we will describe how to choose and
 prepare your system; we will then discuss the correct way to run your GROMACS 
 simulations; and we will finish by discussing some of the post-analysis tools 
 that are available.
 
+Note that this section is written with the intent of helping users to use 
+GROMACS. Some of the sections use examples of common shell-scripting 
+practices -- it is assumed that the reader is either familiar with basic 
+shell-scripting or knows where to learn more about this. Likewise, the 
+background theory behind some of the techniques discussed in the post-analysis 
+section is not presented here. Where possible, we have added links to places 
+where this theory is explained.
 
 --------------------
 Preparing the system
 --------------------
 
-GMX2PDB
+PDB2GMX
 =======
 
 The GROMACS ``pdb2gmx`` command is used to convert a coordinate file into a 
@@ -76,7 +83,7 @@ choose a forcefield. Next, generate a ``forcefield.itp`` included topology
 file. This file is a topology file where you can define the properties of 
 atoms, bond, angles, dihedrals, *etc.*. You can find more information about 
 generating topology files from scratch in the GROMACS manual 
-`file format page<http://manual.gromacs.org/documentation/2020.4/reference-manual/file-formats.html#top>`_.
+`file format page<http://manual.gromacs.org/documentation/current/reference-manual/file-formats.html#top>`_.
 
 Using a ``<forcefield>.ff`` directory has a number of advantages over writing 
 out your system topologies directly. For one, this allows for better 
@@ -97,8 +104,8 @@ permanent part of the forcefields that ``pdb2gmx`` can use.
 
 For more information on generating your own forcefield, please see the GROMACS
 manual pages about 
-`adding a residue<http://manual.gromacs.org/documentation/2020.4/how-to/topology.html>`_
-and `force field organisations<http://manual.gromacs.org/documentation/2020/reference-manual/topologies/force-field-organization.html>`_.
+`adding a residue<http://manual.gromacs.org/documentation/current/how-to/topology.html>`_
+and `force field organisations<http://manual.gromacs.org/documentation/current/reference-manual/topologies/force-field-organization.html>`_.
 
 Preparing and solvating your simulation box
 ===========================================
@@ -209,7 +216,7 @@ the ``-nq`` flag for the anion.
 
 For further information, please see the GROMACS manual  
 `gmx grompp<http://manual.gromacs.org/current/onlinehelp/gmx-grompp.html>`_, 
-and `gmx genion<http://manual.gromacs.org/documentation/2020.4/onlinehelp/gmx-genion.html>`_ 
+and `gmx genion<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-genion.html>`_ 
 pages.
 
 --------------------
@@ -243,13 +250,13 @@ the number of options and variables that can be included, not included, or
 kept as default, we will not go over all of the options here and will instead 
 look at and explain an example molecular dynamics parameter file. You can find 
 a list of all available options in the GROMACS manual
-`molecular dynamics parameters page<http://manual.gromacs.org/documentation/2018/user-guide/mdp-options.html>`_.
+`molecular dynamics parameters page<http://manual.gromacs.org/documentation/current/user-guide/mdp-options.html>`_.
 
 Example molecular dynamics parameter file
 -----------------------------------------
 
 The GROMACS manual has the following 
-`example script<http://manual.gromacs.org/documentation/2018/user-guide/file-formats.html#mdp>`_:
+`example script<http://manual.gromacs.org/documentation/current/user-guide/file-formats.html#mdp>`_:
 
 .. code-block:: bash
 
@@ -386,6 +393,16 @@ simulation. For this, we will use the ``mdrun`` command:
 This command will run the simulation with the topology that you've prepared 
 and the molecular dynamics parameters that you've chosen.
 
+Once the simulation is complete, ``mdrun`` will have produced a number of 
+files. The ``ener.edr`` file is a semi-binary file that contains all of the 
+thermodynamic information output during the run (*e.g.* energy breakdowns, 
+instantaneous presssure and temperature, system denstity, *etc.*). Likewise, 
+the ``md.log`` file generated outputs these properties, but in a text format. 
+The ``traj.trr`` file is a binary that contains details of the simulation 
+trajectory. The final file produced by default is the ``counfout.gro`` is a 
+text file containing the particle coordinates and velocities for the final 
+step of the simulation.
+
 It is possible to add flags to ``mdrun`` to alter some of the parameters that 
 had been set in the molecular dynamics parameter file. For instance, the 
 ``-nsteps`` flag can be used to override the number of timesteps that the 
@@ -394,8 +411,148 @@ defining input files (and input file types), output files, and parameters
 related to the computational system on which you are running (such as the 
 ``-nt`` option to set the number of MPI threads that the simulation should 
 use). More information on these and other options can be found on the GROMACS 
-`gmx mdrun<http://manual.gromacs.org/documentation/5.1/onlinehelp/gmx-mdrun.html>`_
+`gmx mdrun<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-mdrun.html>`_
 page.
+
+Post-processing and analysis tools
+==================================
+
+With the simulation complete, we can analyse the simulation trajectory and 
+understand what the simulation has demonstrated. GROMACS offers a number of 
+post-simulation analysis tools. In this section, we will discuss tools that 
+can be used to: generate the thermodynamic properties of interest; obtain 
+radial distribution functions and correlation functions; 
+
+Thermodynamic properties of the system
+--------------------------------------
+
+The GROMACS ``energy`` tool can be used to extract energy components from an 
+energy (``.edr``) file. By default, this tool will generate an XMGrace file. 
+To use this, run:
+
+.. code-block:: bash
+
+  gmx energy -f ${INPUT_ENERGY_FILE}.edr -o ${OUTPUT_XMGRACE_FILE}.xvg
+  
+When running this, you will get a prompt asking which property you would like 
+output (*e.g.* potential energy, kinetic energy, pressure, temperature, 
+*etc.*). Enter the correct number to generate an XMGrace file that, when 
+plotted, will show you how that property varied over the simulation run. 
+There are a number of other options for the ``energy`` command, and these 
+can be found in the GROMACS manual 
+`gmx energy<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-energy.html#gmx-.. energy>`_
+page.
+
+Generating an index file
+------------------------
+
+GROMACS has a post-analysis tool for generating radial distribution functions 
+(RDFs). Before generating an RDF, we will need to create a GROMACS index 
+(``.ndx``) file to categorise the various parts that compose the simulation 
+into indexed groups. This can be done with the ``gmx make_ndx`` command. To 
+use it, run:
+
+.. code-block:: bash
+
+  gmx make_ndx -f ${INPUT}.gro -o ${OUTPUT}.ndx
+  
+where ``${INPUT}.gro`` is a GROMACS configuration file for the trajectory you 
+are wanting to calculate the RDF for. Provided you used the default names in 
+your ``mdrun``, you can simply use ``confout.gro``. The ``make_ndx`` command 
+will analyse the system, and output the default index groups. It is possible 
+to create new index groups by using the command prompts listed (for instance, 
+you can create a group composed of only the oxygens from the solvent waters by 
+running ``a OW`` within ``make_ndx``). For more information, please see the 
+GROMACS manual
+`gmx make_ndx<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-make_ndx.html>`_ 
+page.
+
+Radial distribution function
+----------------------------
+
+Once an appropriate index file is generated, with the atoms for which an RDF 
+is to be calculated indexed into appropriate groups, we can use the 
+``gmx rdf`` command to generate the RDFs. This is done by running:
+
+.. code-block:: bash
+
+  gmx rdf -f ${TRAJECTORY_INPUT}.trr -n ${INDEX_INPUT}.ndx  \
+          -ref ${REFERENCE_GROUP} -sel ${SELECTED_GROUP} -bin ${BIN_WIDTH}
+          -o ${OUTPUT}.xvg
+  
+where ``${TRAJECTORY_INPUT}.trr`` is the trajectory file for which you would 
+like to generate an RDF, and ``${INDEX_INPUT}.ndx`` is the index file that you 
+produced using ``make_ndx``. ``${REFERENCE_GROUP}`` should be replaced with 
+the name of the principal group to be used in the RDF as it appears in the 
+``${INDEX_INPUT}.ndx`` file. Likewise, ``${SELECTED_GROUP}`` should be 
+replaced with the name of the atom group(s) for which you want to calculate 
+the RDF against the position of the reference group (*e.g.* if you want to 
+calculate the RDF between sodium ions and chloride ions, your reference 
+group would be one of ``NA`` or ``CL``, and your selected group would be the 
+one not chosen as reference). Note that it is possible for your reference and 
+selected groups to be the same group.
+
+Mean squared displacement and velocity autocorrelation functions
+----------------------------------------------------------------
+
+Gromacs offers a number of tools to calculate correlation and autocorrelation 
+functions. Here, we will look at two specific example: the mean-squared 
+displacement (MSD) and velocity autocorrelation function (VACF). We will focus 
+on how to generate these functions within GROMACS but you can use these links 
+to find an overview of the theory behind the 
+`MSD<http://manual.gromacs.org/documentation/current/reference-manual/analysis/mean-square-displacement.html>`_
+and the 
+`VACF<http://manual.gromacs.org/documentation/2019/reference-manual/analysis/correlation-function.html>`_.
+
+Calculating the MSD of parts of a system can be done using the ``gmx msd``. 
+This can be run using:
+
+.. code-block:: bash
+
+  gmx msd -f ${INPUT_TRAJECTORY}.trr -s ${INPUT_TOPOLOGY}.tpr -o ${OUTPUT}.xvg
+  
+where ``${INPUT_TRAJECTORY}.trr`` is the trajectory file of the simulation for 
+which the MSD is being calculated, and ``${INPUT_TOPOLOGY}.tpr`` can be the 
+input file used to obtain this trajectory (note that it is possible to use 
+the final topology ``confout.gro`` file here instead to obtain the same 
+results). Running this command will prompt you to choose the group for which 
+you would like the MSD. Note that, if the group you are looking for is not 
+present in the list, you can generate an index file (see 
+`Generating an index file`_) where you can define this new group. To include 
+this index file, add the option ``-n ${INDEX_FILE}.ndx`` to the command above.
+For more information and options, please look at the GROMACS manual page on 
+the `gmx msd command<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-msd.html#gmx-msd>`_.
+
+VACFs can be generated using the ``gmx velacc`` command:
+
+.. code-block:: bash
+
+  gmx velacc -f ${INPUT_TRAJECTORY}.trr -o ${OUTPUT}.xvg
+  
+where ``${INPUT_TRAJECTORY}.trr`` is the trajectory file of the simulation 
+for which the VACF is being produced. You will get a prompt asking for which 
+group of atoms the VACF should be calculated. If the group you want is not 
+present, you may need to create it by following the instructions in the 
+`Generating an index file`_ section of the manual. To include your index file, 
+add it with the ``-n ${INPUT_INDEX}.ndx`` option. You can find more options 
+and information on the GROMACS manual 
+`gmx velacc<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-velacc.html#gmx-velacc>`_ page.
+
+-----------------
+Further resources
+-----------------
+
+There are a number of excellent GROMACS tutorials that name a number of 
+commands not mentioned here. The following tutorials are highly recommended:
+
+ * `GROMACS Tutorial by Justin A. Lemkhul<http://www.mdtutorials.com/gmx/>`_
+ * `GROMACS Tutorial by Wes Barnett<https://www.svedruziclab.com/tutorials/gromacs/>`_
+
+Furthermore, the 
+`GROMACS How-To guides<>http://manual.gromacs.org/documentation/current/how-to/index.html`_
+provide a lot of information as well.
+
+
 
 .. Good simulation practices
 .. =========================
@@ -408,37 +565,4 @@ page.
 .. 
 .. Production runs
 .. ---------------
-.. 
-
-.. Post-processing and analysis tools
-.. ==================================
-
-.. With the simulation complete, we can analyse the simulation trajectory and 
-.. understand what the simulation has demonstrated. GROMACS offers a number of 
-.. post-simulation analysis tools. In this section, we will discuss tools that 
-.. can be used to: generate the thermodynamic properties of interest; obtain 
-.. radial distribution functions and correlation functions; 
-.. 
-.. Thermodynamic properties of the system
-.. --------------------------------------
-.. 
-.. The GROMACS ``energy`` tool can be used to extract energy components from an 
-.. energy (``.edr``) file. By default, this tool will generate an XMGrace file. 
-.. To use this, run:
-.. 
-.. .. code-block:: bash
-.. 
-  .. gmx energy -f ${INPUT_ENERGY_FILE}.edr -o ${OUTPUT_XMGRACE_FILE}.xvg
-..   
-.. When running this, you will get a prompt asking which property you would like 
-.. output (*e.g.* potential energy, kinetic energy, pressure, temperature, 
-.. *etc.*). Enter the correct number to generate an XMGrace file that, when 
-.. plotted, will show you how that property varied over the simulation run. 
-.. There are a number of other options for the ``energy`` command, and these 
-.. can be found in the GROMACS manual 
-.. `gmx energy<http://manual.gromacs.org/documentation/2019/onlinehelp/gmx-energy.html#gmx-.. energy>`_
-.. page.
-.. 
-.. Radial distribution function and correlation functions
-.. ------------------------------------------------------
 .. 
