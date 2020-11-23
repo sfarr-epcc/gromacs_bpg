@@ -92,7 +92,7 @@ for current_version in ${versions}; do
 done
  
 # return to master branch
-git checkout main
+git checkout master
  
 #######################
 # Update GitHub Pages #
@@ -116,9 +116,9 @@ git checkout main
 cat > "${docroot}/index.html" <<EOF
 <!DOCTYPE html>
 <meta charset="utf-8">
-<title>Redirecting to https://docs.bioexcel.eu/gromacs_bpg/rtd-github-pages/en/main/</title>
-<meta http-equiv="refresh" content="0; URL=https://docs.bioexcel.eu/gromacs_bpg/en/main/">
-<link rel="canonical" href="https://docs.bioexcel.eu/gromacs_bpg/en/main/">
+<title>Redirecting to https://docs.bioexcel.eu/gromacs_bpg/en/master/</title>
+<meta http-equiv="refresh" content="0; URL=https://docs.bioexcel.eu/gromacs_bpg/en/master/">
+<link rel="canonical" href="https://docs.bioexcel.eu/gromacs_bpg/en/master/">
 EOF
  
 # Add README
