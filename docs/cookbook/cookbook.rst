@@ -261,24 +261,23 @@ Simultaneous multithreading (SMT) gives some performance boost
 
 
 .. csv-table:: 20k_HBS benchmark (20k atoms) on HAWK with ``-dlb no`` and ``-tunepme no``
-   :file: cookbook/results/hawk/20k_HBS_dlbNO_tunepmeNO.csv
+   :file: results/hawk/20k_HBS_dlbNO_tunepmeNO.csv
    :header-rows: 2
 
-
 .. csv-table:: benchMEM benchmark (81k atoms) on HAWK with ``-dlb no`` and ``-tunepme no``
-   :file: cookbook/results/hawk/benchMEM_dlbNO_tunepmeNO.csv
+   :file: results/hawk/benchMEM_dlbNO_tunepmeNO.csv
    :header-rows: 2
 
 .. csv-table:: 465k_HBS benchmark (461k atoms) on HAWK with ``-dlb no`` and ``-tunepme no``
-   :file: cookbook/results/hawk/465k_HBS_dlbNO_tunepmeNO.csv
+   :file: results/hawk/465k_HBS_dlbNO_tunepmeNO.csv
    :header-rows: 2
 
 .. csv-table:: benchRIB benchmark (2M atoms) on HAWK with ``-dlb no`` and ``-tunepme no``
-   :file: cookbook/results/hawk/benchRIB_dlbNO_tunepmeNO.csv
+   :file: results/hawk/benchRIB_dlbNO_tunepmeNO.csv
    :header-rows: 2
 
 .. csv-table:: benchPEP benchmark (12M atoms) on HAWK with ``-dlb no`` and ``-tunepme no``
-   :file: cookbook/results/hawk/benchPEP_dlbNO_tunepmeNO.csv
+   :file: results/hawk/benchPEP_dlbNO_tunepmeNO.csv
    :header-rows: 2
 
 
