@@ -44,9 +44,9 @@ best practice in order to aid estimation of required compute time
 allocations for researchers requesting such time. 
 
 
--------------------------------------------------------------------
-General guidance for running ``mdrun`` and getting good performance
--------------------------------------------------------------------
+-------------------------------------------------------------------------------
+General guidance on running ``mdrun`` and strategy for getting good performance
+-------------------------------------------------------------------------------
 
 Single node
 -----------
@@ -243,8 +243,8 @@ https://www.hecbiosim.ac.uk/benchmarks
   
 
 
-HAWK (HLRS, Germany)
---------------------
+GROMACS performance on HAWK (HLRS, Germany)
+-------------------------------------------
 https://www.hlrs.de/systems/hpe-apollo-hawk/
 
 HAWK is currently (November 2020) listed as number 16 on the Top500,
@@ -400,8 +400,8 @@ this:
 
   
 
-Piz Daint (CSCS, Switzerland)
------------------------------
+GROMACS performance on Piz Daint (CSCS, Switzerland)
+----------------------------------------------------
 
 **Hardware**
 
@@ -464,7 +464,7 @@ Example job script to run ``mdrun`` on Piz Daint's XC50 GPU partition for 1 hour
    srun gmx_mpi mdrun -s benchmark.tpr -ntomp ${OMP_NUM_THREADS}
 
 
-**Offload scenarios**
+**GPU offload scenarios, hybrid MPI/OpenMP execution and simultaneous multithreading**
    
 Keeping in mind best practice to associate one rank (one spatial domain) with each GPU means we run ``mdrun`` with one MPI rank per node since there is only GPU on each node. We choose 12 OpenMP threads (``-ntomp 12``) per MPI rank in order to use all CPU cores, or 24 threads per rank if hyperthreading is enabled. Since there is only one processor (one socket) on Piz Daint GPU compute nodes, we do not expect to suffer a performance penalty by having a single rank spanning across all 12 cores using multithreading. Using default GPU offloaded settings means PME is offloaded to GPU, which can currently only happen on a single rank, corresponding to running ``mdrun`` with ``-npme 1``. 
 
@@ -629,7 +629,9 @@ These results are intended as a convenient reference to help
 researchers estimate compute time requirements for their proposed
 research in preparation for applying to HPC resource allocation calls.
 
-
+[Table showing ns/day and walltime hours/ns with good performance
+(PME-tuned, dlb on, etc.) for above benchmarks on these machines,
+i.e. summary of good achievable building on above results to optimise]
 
 
 
