@@ -6,12 +6,12 @@
 .. toctree::
    :maxdepth: 2
 
-   cookbook/cookbook
+   workflow/workflow
 
+   
 .. toctree::
    :maxdepth: 2
 
-   workflow/workflow
-
+   cookbook/cookbook
 
 
