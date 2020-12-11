@@ -58,9 +58,8 @@ the GROMACS
 
 .. note::
 
-  There are some limitations to ``pdb2gmx``. This usually gives less accurate 
-  results for branched/non-linear bonds.  **There's another one but it slips 
-  my mind**
+  One limitation of ``pdb2gmx``is that it gives less accurate results for 
+  branched/non-linear bonds.
 
 Generating your own forcefield file
 -----------------------------------
@@ -107,8 +106,44 @@ manual pages about
 `adding a residue<http://manual.gromacs.org/documentation/current/how-to/topology.html>`_
 and `force field organisations<http://manual.gromacs.org/documentation/current/reference-manual/topologies/force-field-organization.html>`_.
 
+-------------------------------------------
 Preparing and solvating your simulation box
-===========================================
+-------------------------------------------
+
+Generating a system from a GROMACS structure file
+=================================================
+
+It is possible to populate a simulation box by replicating the contents 
+of a GROMACS structure (``.gro``) file multiple times. This can be achieved 
+with the ``insert-molecules`` command. While any structure file can be used 
+(including full system files), this is particularly useful if you want to 
+create a system with a large number of copies of a single molecule (*i.e.* 
+as found in a lipid bilayer or a non-aqueous solvent). Furthermore, the 
+topology (``.top``) file generated for the system to be replicated will still 
+work for the new, larger system.
+
+To generate a system using this command, run:
+
+.. code-block:: bash
+
+  gmx insert-molecules -ci ${INPUT}.gro -o ${OUTPUT}.gro \
+                       -nmol ${N} -box ${X_LENGTH} ${Y_LENGTH} ${Z_LENGTH}
+                       
+where ``${INPUT}.gro`` is the structure file of the molecule/system you wish 
+to replicate, ``${OUTPUT}.gro`` is the output file, ``${N}`` is the number of 
+times that the contents of ``${INPUT}.gro`` will be replicated, and 
+``${X_LENGTH}``, ``${Y_LENGTH}``, and ``${Z_LENGTH}`` are the dimensions of 
+the cubic box into which these ``${N}`` replicas must be packed.
+
+There are number of further options to help pack your system, including a way 
+of defining the default van der Waals distance between atoms in your system, a 
+way of inserting new molecules into an existing system, and methods to control 
+the amount of random rotation that replicated molecules can undergo. All of 
+these options can be found in the 
+`gmx insert-molecules<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-insert-molecules.html>`_ page of the GROMACS manual.
+
+Generating a simulation box
+===========================
 
 Now that a topology has been generated, the next step is to generate a 
 simulation box into which to place this topology. For this, use the 
@@ -133,13 +168,8 @@ control over defining the simulation box. These can be found in the GROMACS
 manual 
 `gmx editconf page<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-editconf.html>`_.
 
-.. Generating a system from a GROMACS topology
-.. ===========================================
-.. 
-.. Here, I'll talk about ``insert-molecule`` (for generating liquids) and how to generate a bilayer.
-
 Solvating a system
-===============================
+==================
 
 The aptly-named ``solvate`` tool can be used to create a box of solvent or 
 to solvate a pre-existing box. To use it, run:
@@ -254,6 +284,17 @@ a list of all available options in the GROMACS manual
 
 Example molecular dynamics parameter file
 -----------------------------------------
+
+.. note::
+
+  GROMACS has been developed to be forcefield agnostic. This means that a 
+  large number of different forcefields can be run using GROMACS. However, 
+  this also means that different forcefields will require slightly different 
+  constraints to be defined in their dynamic parameter files. You can find 
+  more about this in the 
+  `Force fields in GROMACS<http://manual.gromacs.org/documentation/current/user-guide/force-fields.html>`_
+  section of the GROMACS manual.
+  
 
 The GROMACS manual has the following 
 `example script<http://manual.gromacs.org/documentation/current/user-guide/file-formats.html#mdp>`_:
@@ -551,18 +592,3 @@ commands not mentioned here. The following tutorials are highly recommended:
 Furthermore, the 
 `GROMACS How-To guides<>http://manual.gromacs.org/documentation/current/how-to/index.html`_
 provide a lot of information as well.
-
-
-
-.. Good simulation practices
-.. =========================
-.. 
-.. Energy minimisation
-.. -------------------
-.. 
-.. System equilibration
-.. --------------------
-.. 
-.. Production runs
-.. ---------------
-.. 
