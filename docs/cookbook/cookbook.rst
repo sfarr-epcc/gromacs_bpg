@@ -294,27 +294,32 @@ to illustrate the strength of load imbalance in different MPI/OpenMP
 execution scenarios. The figures below show benchmark performance on
 HAWK for different combinations of MPI ranks and OpenMP threads and
 with and without use of multithreading (SMT). Eror bars (offset upward
-from measurements) indicate the hypothetical performance if the
-combined load imbalance between spatial domains and between PP and PME
-ranks reported by GROMACS were absent.
+from measurements) indicate the hypothetical maximum obtainable
+performance if the combined load imbalances between spatial domains
+and between PP and PME ranks reported by GROMACS were absent.
+
 
 It is clear there is a very significant effect on performance of the
 choice of MPI/OpenMP hybrid decomposition. As a general rule on HAWK
-it is likely that performance is best for the smallest number of
-OpenMP threads per MPI rank, though it may be possible to achieve
-better scaling on larger number of nodes with a modest number of
-threads per rank. Using threading may allow use of a convenient number
-of total nodes by avoiding the fatal error of choosing a number of PP
-ranks that have too large a prime factor as largest divisor, causing
-GROMACS to abort with a fatal error. 
-
+performance is better for fewer (typically 1, 2 or 4) OpenMP threads
+per MPI rank, and hence more MPI ranks per node. Using more than 1
+(but no more than 4) OpenMP threads per rank may enable better
+performance to be achieved especially on larger number of nodes. Such
+OpenMP multithreading also allow runs on larger numbers of nodes to
+run at all without further detailed consideration by reducing the
+total number of MPI ranks and thereby avoiding the fatal error of
+choosing a number of PP ranks that has too large a prime factor as
+largest divisor, which causes GROMACS to abort with a fatal error. Use
+of simultaneous multithreading ("SMT on" figures in right column
+below) was observed to typically degrade performance somewhat compared
+to running without use of SMT. 
 
 
 .. list-table:: 
    :align: center
-	   
-   * - .. figure:: results/hawk/20k_HBS_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
+   * - .. figure:: results/hawk/20k_HBS_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
+     
           20k_HBS, SMT off (1 thread per core)
      
      - .. figure:: results/hawk/20k_HBS_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
@@ -329,23 +334,23 @@ GROMACS to abort with a fatal error.
 
           benchMEM, SMT on (2 threads per core)
 
-   * - .. figure:: results/hawk/465k_HBS_1smt_dlbNO_tunepmeNO-nsperday.svg
+   * - .. figure:: results/hawk/465k_HBS_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
           465k_HBS, SMT off (1 thread per core)
 	   
-     - .. figure:: results/hawk/465k_HBS_2smt_dlbNO_tunepmeNO-nsperday.svg
+     - .. figure:: results/hawk/465k_HBS_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
           465k_HBS, SMT on (2 threads per core)
 
-   * - .. figure:: results/hawk/benchRIB_1smt_dlbNO_tunepmeNO-nsperday.svg
+   * - .. figure:: results/hawk/benchRIB_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
           benchRIB, SMT off (1 thread per core)
 
-     - .. figure:: results/hawk/benchRIB_2smt_dlbNO_tunepmeNO-nsperday.svg
+     - .. figure:: results/hawk/benchRIB_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
           benchRIB, SMT on (2 threads per core)
 
-   * - .. figure:: results/hawk/benchPEP_1smt_dlbNO_tunepmeNO-nsperday.svg
+   * - .. figure:: results/hawk/benchPEP_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
           benchPEP, SMT off (1 thread per core)
 
@@ -353,8 +358,6 @@ GROMACS to abort with a fatal error.
 
           benchPEP, SMT on (2 threads per core)
 	   
-
-
 
 
 
