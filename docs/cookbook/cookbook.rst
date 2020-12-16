@@ -56,62 +56,82 @@ a laptop, desktop workstation, or server, where all processor cores or
 GPUs have access to a single shared memory, we typically run the
 thread-mpi version of mdrun (``gmx mdrun``).
 
-++++++++
-CPU only
-++++++++
+**CPU only**
 
-On a single-node CPU-only machine one can experiment with different
-combinations of numbers of thread-MPI ranks (controlled by varying
-``-ntmpi N``) and numbers of OpenMP threads per rank (controlled by
-varying ``-ntomp M`` and setting the environment variable
-``OMP_NUM_THREADS=M``), such that ``M x N`` is equal to the total
-number of CPU cores available on the node. Many processors support
-simultaneous multithreading (SMT), known as hyperthreading for Intel
-processors, whereby each physical core can run multiple threads or
-processes. Enabling multithreading may boost performance. If enabled,
-``-ntmpi N`` and ``-ntomp M`` should be chosen such that ``M x N``
-equals the number of logical cores identified by the operating
-systems, which is equal to the number of physical cores times by the
-number of multithreads per physical core.
+Running GROMACS with the default of one thread-mpi rank per core on a
+single-node CPU-only machine is often optimal, however one can
+experiment with different combinations of numbers of thread-MPI ranks
+(controlled by varying ``-ntmpi N``) and numbers of OpenMP threads per
+rank (controlled by varying ``-ntomp M`` and setting the environment
+variable ``OMP_NUM_THREADS=M``), such that ``M x N`` is equal to the
+total number of CPU cores available on the node. Many processors
+support simultaneous multithreading (SMT), known as hyperthreading on
+Intel processors, whereby each physical core can efficiently execute
+multiple threads or processes. Enabling multithreading may boost
+performance. To make use of SMT, ``-ntmpi N`` and ``-ntomp M`` should
+be chosen such that ``M x N`` equals the number of logical cores
+identified by the operating systems, which is equal to the number of
+physical processor cores multiplied by the number of simultaneous
+multithreads supported by each physical core.
+
+If executing on more than at least 12 ranks GROMACS by default
+dedicates a certain fraction of the ranks to PME calculations.  The
+number of PME ranks is based on various heuristics that reflect what
+the developers expect to be optimal based on the underlying algorithms
+and what has often been found to give good performance. During
+execution GROMACS attempts to reduce the load imbalance between PP and
+PME ranks, unless this functionality is disabled by choosing
+``-tunepme no``.  Even when enabled however, this dynamic PME tuning
+does not change the number of PME ranks from what GROMACS decides
+according to its built-in heuristics. It is possible to explicitly
+specify the number of PME ranks to use with the ``-npme`` option. You
+should examine the md.log file produced and check if there is any
+warning suggesting to try use a larger or smaller number of PME ranks
+for your simulation. A more systematic way to determine a
+performance-optimal number of PME ranks for a given total number of
+ranks can be determined using the ``gmx tune_pme`` tool as described
+in `gmx tune_pme
+<http://manual.gromacs.org/current/onlinehelp/gmx-tune_pme.html#gmx-tune-pme>`_
 
 For details, see `Running mdrun within a single node
 <http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-within-a-single-node>`_
 and `Process(-or) level parallelization via OpenMP <http://manual.gromacs.org/current/user-guide/mdrun-performance.html#process-or-level-parallelization-via-openmp>`_
 
 
+**CPU + GPU**
 
-+++++++++
-CPU + GPU
-+++++++++
-
-- Default behaviour one thread-mpi rank per GPU (default) likely optimal
-
-  * use ``-ntomp`` to use remaining CPU cores (similar considerations
-    for hyperthreading/SMT as for CPU only nodes)
+By default GROMACS launches one thread-mpi rank per GPU. It is worth
+experimenting running with more thread-mpi ranks, up to one rank per
+CPU core. Whatever the number of ranks, choose ``-ntomp`` to ensure
+all available CPU cores are used, and apply similar considerations to
+adjust ``-ntomp`` for hyperthreading/SMT-capable processors as
+described above for CPU-only execution. 
     
-  * if there are more processor sockets than GPUs, probably want one
-    rank per socket and share access to the same GPU using
-    ``-gputasks`` mapping
+**GPU offload options**
 
-    
-GPU offload options:
+By default GROMACS offloads short-range non-bonded force calculations
+(``-nb gpu``), PME calculations (``-pme gpu``) and, on NVIDIA GPUs,
+bonded force calculations (``-bonded gpu``). Currently (GROMACS 2020)
+PME offload to GPU can only be done by a single rank (i.e. a single
+GPU). PME offload is also subject to a number of further `known
+limitations
+<http://manual.gromacs.org/current/user-guide/mdrun-performance.html#known-limitations>`_.
 
-- Default behaviour is to offload short-range non-bonded (``-nb
-  gpu``), PME (``-pme gpu``), and bonded (``-bonded gpu``)
-- PME offload: one rank only, and limitations (list)
-   * If multiple GPUs, can use ``-gputasks`` to dedicate one GPU for
-     PME offload rank, PP calculations on other GPUs. This would
-     happen anyway if total number of ranks = number of GPUs on node
-    
-- Try offload options taking into account `performance considerations
-  for GPU tasks
-  <http://manual.gromacs.org/current/user-guide/mdrun-performance.html#performance-considerations-for-gpu-tasks>`_
-  given your hardware
-- FFTs offloaded if PME offloaded, but can avoid with ``-pmefft
-  cpu`` - consider for older GPU with newer CPU
-- Constraint calculations and coordinate updates default to CPU, but
-  can be offloaded with ``-update gpu``
-    
+It is worth experimenting with offload options taking into account the
+`performance considerations for GPU tasks
+<http://manual.gromacs.org/current/user-guide/mdrun-performance.html#performance-considerations-for-gpu-tasks>`_
+and considering your hardware, in particular the number and respective
+age and computational power of your processor(s) and your GPU(s). For
+example, FFTs are offloaded by default if PME is offloaded (which also
+happens by default), but this can be avoided with ``-pmefft cpu`` and
+may be beneficial for an older GPU sitting alongside newer CPU.
+
+Constraint calculations and coordinate updates default to CPU but can
+be offloaded with ``-update gpu``, though only to NVIDIA GPUs, only if
+GROMACS is executes on a single rank, and currently (GROMACS 2020)
+subject to further limitations (no free-energy, no virtual sites, no
+Ewald surface correction, no replica exchange, no constraint pulling,
+no orientation restraints and no computational electrophysiology).
 
 For details, see `Running mdrun within a single node
 <http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-within-a-single-node>`_,
@@ -124,56 +144,66 @@ Multiple networked compute nodes in a cluster or supercomputer
 --------------------------------------------------------------
 
 In order to run GROMACS on a multi-node distributed-memory machine
-such as a supercomputer we need to run the MPI-enabled version,
-``gmx_mpi mdrun`` or simply ``mdrun_mpi``, rather than ``gmx mdrun``
-or simply ``mdrun``. We must launch In addition and launch with parallel application
-launcher (``mpirun``, ``mpiexec``, ``srun``, or ``aprun``) which
-determines number of ranks (not ``-ntmpi``)
+such as a supercomputer we need to run the MPI-enabled version using
+``gmx_mpi mdrun`` (or simply ``mdrun_mpi``), rather than ``gmx mdrun``
+(or simply ``mdrun``). In addition, GROMACS should be launched with a
+parallel application launcher (``mpirun``, ``mpiexec``, ``srun``, or
+``aprun``), which sets the number of MPI ranks ``N``:
 
 ::
 
-   mpirun -np N gmx_mpi mdrun <options> 
+   mpirun -np N gmx_mpi mdrun <mdrun options> 
 
-For these larger runs, GROMACS can benefit from having MPI ranks dedicated
-to PME ranks and spawns a certain fraction of these based on internal settings.
 
-You should examine the md.log file produced and check if there is any
-note suggesting to use a larger or smaller number of PME ranks.
+**CPU only**
 
-A performance-optimal number of PME ranks for a given total number of
+As for single-node simulations, running with 1 rank per core and 1
+OpenMP thread per rank and therefore with as many MPI ranks per node
+as there are cores on each node is often optimal. It is however worth
+experimenting with multiple OpenMP threads per rank, especially as
+this often helps retain higher performance when scaling to more nodes.
+
+Runs using multiple nodes are very likely to cause GROMACS to
+automatically spawn dedicated PME ranks, for which you are advised to
+follow the guidance already given above for the single node case. You
+should be aware that if the number of PP ranks resulting from the
+combined choice of total number of MPI ranks and number of PME ranks
+has a largest prime divisor that GROMACS considers too large to give
+good performance for the domain decomposition, it will throw a fatal
+error and abort execution. In these cases it may be worth adjusting
+the total number of ranks and/or the number of PME ranks to obtain
+better performance, using OpenMP threading where necessary to ensure
+all cores on each node are utilised, though it's not inconceivable
+that overall performance may be larger with an optimal choice of
+number of PME ranks even if this leaves a small number of cores on
+each node unused. As explained for the single-node case,
+performance-optimal number of PME ranks for a given total number of
 ranks can be determined in a systematic way using the ``gmx tune_pme``
-tool as described in `gmx tune_pme <http://manual.gromacs.org/current/onlinehelp/gmx-tune_pme.html#gmx-tune-pme>`_
+tool as described in `gmx tune_pme
+<http://manual.gromacs.org/current/onlinehelp/gmx-tune_pme.html#gmx-tune-pme>`_
 
-
- 
-++++++++
-CPU only
-++++++++
-
-Start with one rank per core. Once scaling of performance with
-increasing numbers of cores gets bad (expected for around ~200
-particles per core), try introducing multiple OpenMP threads per rank
-as this may give some benefit.
-
-Experiment with number of dedicated PME ranks (using ``gmx tune_pme``)
-
-OpenMP threading for PME rank can be different than for PP ranks (see
-``-ntomp_pme`` option).
-
+The OpenMP threading for PME ranks can be chosen to be different than
+for standard (i.e. PP) ranks using the ``-ntomp_pme`` option,
+providing added flexibility to help utilise all cores on each node.
 
     
-+++++++++
-CPU + GPU
-+++++++++
-In addition to GPU offloading considerations already relevant for single node, investigate which is faster:
+**CPU + GPU**
 
-- pme-tuned tuned multi-rank (multicore) CPU-based PME computation
+Broadly the same considerations as for single-node use apply with
+regards to determining an optimal choice of number of MPI ranks x
+OpenMP threads and GPU offloading options. However currently
+(GROMACS 2020) offloading of coordinate updates and constraints is not
+possible when running on more than one node as this restricts GROMACS
+to run on a single rank and hence on a single node. 
 
-- single-rank offloaded PME calculation on one GPU in entire simulation
-
-
-
-      
+The benefit of offloading PME calculations, which need to take place
+on a single rank running on a single GPU, is likely to be reduced when
+attempting to scale simulations to larger numbers of nodes as
+additional communication will be needed between this rank and all
+other ranks. At some point therefore it may be faster on the same
+number of nodes to run multiple dedicated PME ranks - a number chosen
+using ```tune_pme``` - on CPU cores, instead of offloading all PME
+calculations to a single GPU.
 
 
 
@@ -218,7 +248,8 @@ https://www.hecbiosim.ac.uk/benchmarks
    * Total number of atoms: 19,605
    * Protein atoms: 642
    * Water atoms: 18,963
-
+   * Input parameters: :doc:`20k_HBS.mdp <benchmarks/20k_HBS>`
+     
 - **benchMEM**:
    * Protein in membrane, surrounded by water
    * Total number of atoms: 82k
@@ -280,97 +311,71 @@ The example job script below shows how to run GROMACS on HAWK for 1 hour on 8 no
 .. include:: run/hawk/jobscript.rst
 
 	     
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++
-MPI vs OpenMP hybrid parallelism and SMT multithreading
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-In order to better understand how GROMACS utilises the hardware and
-make appropriate choices we can investigate the effect on benchmark
-performance of the choice of hybrid MPI \& OpenMP execution and use of
-SMT for a given number of HAWK nodes. Doing this systematically is
-facilitated in the first instance by disabling dynamic load balancing
-(``-dlb no``) and PME tuning (``-tunepme no``), which also allows us
-to illustrate the strength of load imbalance in different MPI/OpenMP
-execution scenarios. The figures below show benchmark performance on
-HAWK for different combinations of MPI ranks and OpenMP threads and
-with and without use of multithreading (SMT). Eror bars (offset upward
-from measurements) indicate the hypothetical maximum obtainable
-performance if the combined load imbalances between spatial domains
-and between PP and PME ranks reported by GROMACS were absent.
+**MPI x OpenMP hybrid parallel execution and simultaneous multithreading**
 
+
+In order to better understand how GROMACS utilises the available
+hardware on HAWK and how to get good performance we can examine the
+effect on benchmark performance of the choice of the number of MPI
+ranks per node and OpenMP thread and use of SMT for a given number of
+HAWK nodes. Doing this systematically is facilitated in the first
+instance by disabling dynamic load balancing (``-dlb no``) and PME
+tuning (``-tunepme no``), which also allows us to illustrate the
+strength of load imbalance in different execution scenarios.
+
+The figures below show benchmark performance for GROMACS 2020.2 scales
+with increasing node count on HAWK for different combinations of MPI
+ranks and OpenMP threads per rank. Results using simultaneous
+multithreading (SMT) are not shown as these follow similar trends but
+broadly speaking yield slightly lower performance on HAWK for the
+benchmarks examined, even with compact placement assigned using
+``omplace``. Error bars (offset upward from measurements) indicate the
+hypothetical maximum obtainable performance if the combined load
+imbalances between spatial domains and between PP and PME ranks
+reported by GROMACS were absent.
 
 It is clear there is a very significant effect on performance of the
-choice of MPI/OpenMP hybrid decomposition. As a general rule on HAWK
+choice of MPI x OpenMP hybrid decomposition. As a general rule on HAWK
 performance is better for fewer (typically 1, 2 or 4) OpenMP threads
 per MPI rank, and hence more MPI ranks per node. Using more than 1
 (but no more than 4) OpenMP threads per rank may enable better
-performance to be achieved especially on larger number of nodes. Such
-OpenMP multithreading also allow runs on larger numbers of nodes to
-run at all without further detailed consideration by reducing the
-total number of MPI ranks and thereby avoiding the fatal error of
-choosing a number of PP ranks that has too large a prime factor as
-largest divisor, which causes GROMACS to abort with a fatal error. Use
-of simultaneous multithreading ("SMT on" figures in right column
-below) was observed to typically degrade performance somewhat compared
-to running without use of SMT. 
+performance to be achieved especially on larger number of
+nodes. OpenMP multithreading also allow runs on larger numbers of
+nodes to run without requiring care to avoid the fatal abortive error
+that results from a number of PP ranks that has too large a prime
+factor as largest divisor, simply by reducing the total number of MPI
+ranks. 
 
 
 .. list-table:: 
-   :align: center
+   :align: left
 
    * - .. figure:: results/hawk/20k_HBS_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
      
-          20k_HBS, SMT off (1 thread per core)
-     
-     - .. figure:: results/hawk/20k_HBS_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
+          **20k_HBS**
 
-          20k_HBS, SMT on (2 threads per core)
-	  
-   * - .. figure:: results/hawk/benchMEM_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
+     - .. figure:: results/hawk/benchMEM_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
-          benchMEM, SMT off (1 thread per core)
+          **benchMEM**
 	   
-     - .. figure:: results/hawk/benchMEM_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
-
-          benchMEM, SMT on (2 threads per core)
-
    * - .. figure:: results/hawk/465k_HBS_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
-          465k_HBS, SMT off (1 thread per core)
+          **465k_HBS**
 	   
-     - .. figure:: results/hawk/465k_HBS_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
+     - .. figure:: results/hawk/benchRIB_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
-          465k_HBS, SMT on (2 threads per core)
-
-   * - .. figure:: results/hawk/benchRIB_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
-
-          benchRIB, SMT off (1 thread per core)
-
-     - .. figure:: results/hawk/benchRIB_2smt_resethway_dlbNO_tunepmeNO-nsperday.svg
-
-          benchRIB, SMT on (2 threads per core)
+          **benchRIB**
 
    * - .. figure:: results/hawk/benchPEP_1smt_resethway_dlbNO_tunepmeNO-nsperday.svg
 
-          benchPEP, SMT off (1 thread per core)
+          **benchPEP**
 
-     - .. figure:: results/hawk/benchPEP_2smt_dlbNO_tunepmeNO-nsperday.svg
-
-          benchPEP, SMT on (2 threads per core)
-	   
-
-
-
+     - ..
 
 **Tuning the number of PME ranks**
 
-Unless disabled with ``-tunepme no`` GROMACS by default attempts to
-reduce the load imbalance between PP and PME ranks. However it does
-not change the number of dedicated PP and PME ranks. These are fixed,
-and unless chosen by specifying the number of PME ranks using
-``-npme`` are determined according to various heuristics based on what
-is expected be optimal based on the underlying algorithm and what has
-often been found to give good performance.
+
 
 As `mentioned in the manual
 <http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-on-more-than-one-node>`_
@@ -392,8 +397,8 @@ nodes with 32 MPI ranks per node (512 ranks in total) and 4 OpenMP
 threads per rank, which we saw in the above results is already a good
 choice considering unbalanced performance and which has scope to
 improve significantly through reduction of observed load imbalance.
-The following script will allow us to run ``tune_pme`` on HAWK to do
-this:
+The following script allows one to run ``tune_pme`` on HAWK to do this
+and thereby determine an optimal choice for ``-npme``:
 
 .. include:: run/hawk/tunepme.rst
 
@@ -466,59 +471,56 @@ Example job script to run ``mdrun`` on Piz Daint's XC50 GPU partition for 1 hour
    
    srun gmx_mpi mdrun -s benchmark.tpr -ntomp ${OMP_NUM_THREADS}
 
+**GPU offload scenarios, hybrid MPI x OpenMP hybrid parallel execution and simultaneous multithreading**
 
-**GPU offload scenarios, hybrid MPI/OpenMP execution and simultaneous multithreading**
-   
-Keeping in mind best practice to associate one rank (one spatial domain) with each GPU means we run ``mdrun`` with one MPI rank per node since there is only GPU on each node. We choose 12 OpenMP threads (``-ntomp 12``) per MPI rank in order to use all CPU cores, or 24 threads per rank if hyperthreading is enabled. Since there is only one processor (one socket) on Piz Daint GPU compute nodes, we do not expect to suffer a performance penalty by having a single rank spanning across all 12 cores using multithreading. Using default GPU offloaded settings means PME is offloaded to GPU, which can currently only happen on a single rank, corresponding to running ``mdrun`` with ``-npme 1``. 
+In order to better understand how GROMACS utilises the available
+hardware on Piz Daint and how to get good performance we can examine
+the effect on benchmark performance of the choice of which
+calculations to offload to GPU, the number of MPI ranks per node and
+OpenMP threads per rank, and use of simultaneous multithreading. Doing
+this systematically is facilitated in the first instance by disabling
+dynamic load balancing (``-dlb no``) and PME tuning (``-tunepme no``),
+which also allows us to illustrate the strength of load imbalance in
+different execution scenarios.
 
-[Figure showing scaling of benchmark performance for these options, i.e. with single PME rank offloaded to GPU]
-
-Disabling PME GPU offloading by choosing ``-pme cpu`` means PME computations are done on CPU cores. Consider using ``tune_pme`` to determine optimal number of PME ranks.  
+The figures below show benchmark performance for GROMACS 2020.2 scales
+with increasing node count on Piz Daint for different combinations of
+GPU offload scenarios and for different combinations of MPI ranks and
+OpenMP threads, and with and without use of multithreading (SMT). Only
+the most relevant, i.e. some of the best-performing execution
+scenarios are shown for each benchmark. Error bars (offset upward from
+measurements) indicate the hypothetical maximum obtainable performance
+if the combined load imbalances between spatial domains and between PP
+and PME ranks reported by GROMACS were absent.
 
 
 
 .. list-table:: 
    :align: center
 	   
-   * - .. figure:: results/pizdaint/20k_HBS_1smt_dlbNO_tunepmeNO-nsperday.svg
-
-          20k_HBS, SMT off (1 thread per core)
+   * - .. figure:: results/pizdaint/20k_HBS_1smt_002mpi_006omp_dlbNO_tunepmeNO-nsperday.svg
      
-     - .. figure:: results/pizdaint/20k_HBS_2smt_dlbNO_tunepmeNO-nsperday.svg
+          **20k_HBS** - 2 mpi x 6 omp (SMT off)
+     
+     - .. figure:: results/pizdaint/benchMEM_2smt_004mpi_006omp_dlbNO_tunepmeNO-nsperday.svg
 
-          20k_HBS, SMT on (2 threads per core)
-	  
-   * - .. figure:: results/pizdaint/benchMEM_1smt_dlbNO_tunepmeNO-nsperday.svg
-
-          benchMEM, SMT off (1 thread per core)
+          **benchMEM** - 4 mpi x 6 omp (SMT on)
 	   
-     - .. figure:: results/pizdaint/benchMEM_2smt_dlbNO_tunepmeNO-nsperday.svg
+   * - .. figure:: results/pizdaint/465k_HBS_2smt_008mpi_003omp_dlbNO_tunepmeNO-nsperday.svg
 
-          benchMEM, SMT on (2 threads per core)
+          **465k_HBS** - 8 mpi x 3 omp (SMT on)
 
-   * - .. figure:: results/pizdaint/465k_HBS_1smt_dlbNO_tunepmeNO-nsperday.svg
+     - .. figure:: results/pizdaint/benchRIB_2smt_004mpi_006omp_dlbNO_tunepmeNO-nsperday.svg
 
-          465k_HBS, SMT off (1 thread per core)
-	   
-     - .. figure:: results/pizdaint/465k_HBS_2smt_dlbNO_tunepmeNO-nsperday.svg
+          **benchRIB** - 4 mpi x 6 omp (SMT on)
 
-          465k_HBS, SMT on (2 threads per core)
+   * - .. figure:: results/pizdaint/benchPEP_2smt_004mpi_006omp_dlbNO_tunepmeNO-nsperday.svg
 
-   * - .. figure:: results/pizdaint/benchRIB_1smt_dlbNO_tunepmeNO-nsperday.svg
+          **benchPEP** - 4 mpi x 6 omp (SMT on)
 
-          benchRIB, SMT off (1 thread per core)
+     - .. 
 
-     - .. figure:: results/pizdaint/benchRIB_2smt_dlbNO_tunepmeNO-nsperday.svg
-
-          benchRIB, SMT on (2 threads per core)
-
-   * - .. figure:: results/pizdaint/benchPEP_1smt_dlbNO_tunepmeNO-nsperday.svg
-
-          benchPEP, SMT off (1 thread per core)
-
-     - .. figure:: results/pizdaint/benchPEP_2smt_dlbNO_tunepmeNO-nsperday.svg
-
-          benchPEP, SMT on (2 threads per core)
+          
 	   
 
 
