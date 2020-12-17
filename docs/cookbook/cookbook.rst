@@ -563,30 +563,46 @@ Acting on performance-related warnings found in ``md.log``
 This section provides guidance on identifying, understanding, and acting on performance-related warnings and suggestions issued by ``mdrun`` that you may encounter in ``md.log``. These may suggest more efficient ways to launch ``mdrun``, or spot if the GROMACS installation you are using has not been built to give good performance on the hardware and suggest how to improve this. 
 
 
-*Provide practical guidance, and link out to Installation Guide in manual (again, acting as bridge / guide to the manual)*
+**Fatal errors**
 
-
-- SIMD warning in ``md.log``, e.g.: ::
-
-   Highest SIMD level requested by all nodes in run: AVX_512
-   SIMD instructions selected at compile time:       AVX2_256
-   This program was compiled for different hardware than you are running on,
-   which could influence performance. This build might have been configured on a
-   login node with only a single AVX-512 FMA unit (in which case AVX2 is faster),
-   while the node you are running on has dual AVX-512 FMA units.
-
-  - proviso regarding narrower SIMD width (AVX2_256) potentially better (than AVX_512) for Intel Skylake & Cascade Lake
-
-- Error (abort):
+- Fatal error (abort):
 
   ::
 
    Feature not implemented:
    PME GPU does not support PME decomposition
 
-  - Need to pass ``-npme 1`` as an option to ``mdrun``.
+  - Need to pass ``-npme 1`` as an option to ``mdrun`` to instruct GROMACS to run offload PME calculations on one rank only.
 
-- Error (abort):
+
+- Fatal error (abort):
+
+  ::
+
+     128 OpenMP threads were requested. Since the non-bonded force buffer reduction
+     is prohibitively slow with more than 64 threads, we do not allow this. Use 64
+     or less OpenMP threads.
+
+- Fatal error (abort):
+
+  ::
+     
+     There is no domain decomposition for 11 ranks that is compatible with the
+     given box and a minimum cell size of 0.79375 nm
+     Change the number of ranks or mdrun option -rdd or -dds
+     Look in the log file for details on the domain decomposition
+     
+
+-  Fatal error (abort):
+
+   ::
+
+      The number of ranks selected for particle-particle work (383) contains a large
+      prime factor 383. In most cases this will lead to bad performance. Choose a
+      number with smaller prime factors or set the decomposition (option -dd)
+      manually.
+
+- Fatal error (abort):
 
   ::
 
@@ -597,15 +613,37 @@ This section provides guidance on identifying, understanding, and acting on perf
    With separate PME rank(s), PME must use direct communication.
    
 
-  - Is because of "Update and constraints on a GPU is currently not supported with domain decomposition, free-energy, virtual sites, Ewald surface correction, replica exchange, constraint pulling, orientation restraints and computational electrophysiology."
+  - This error is because currently (GROMACS 2020) offloading of update and constraints on a GPU is not supported with domain decomposition, free-energy, virtual sites, Ewald surface correction, replica exchange, constraint pulling, orientation restraints and computational electrophysiology.
 
-- Error (abort):
+       
+- Fatal error (abort):
+
+  ::
+  
+     Update task on the GPU was required, but the following condition(s) were not satisfied:
+     Virtual sites are not supported.
+     Non-connecting constraints are not supported
+     The number of coupled constraints is higher than supported in the CUDA LINCS
+
+    - This error is because currently (GROMACS 2020) offloading of update and constraints on a GPU is not supported with domain decomposition, free-energy, virtual sites, Ewald surface correction, replica exchange, constraint pulling, orientation restraints and computational electrophysiology.
+
+      
+      
+**Performance warnings**
+      
+- Performance warning:
 
   ::
 
-     128 OpenMP threads were requested. Since the non-bonded force buffer reduction
-     is prohibitively slow with more than 64 threads, we do not allow this. Use 64
-     or less OpenMP threads.
+     Highest SIMD level requested by all nodes in run: AVX_512
+     SIMD instructions selected at compile time:       AVX2_256
+     This program was compiled for different hardware than you are running on,
+     which could influence performance. This build might have been configured on a
+     login node with only a single AVX-512 FMA unit (in which case AVX2 is faster),
+     while the node you are running on has dual AVX-512 FMA units.
+
+  - Note: for Intel Skylake & Cascade Lake it is possible that narrower SIMD width AVX2_256 is actually faster than AVX_512 
+
 
 - Performance warning:
 
@@ -616,34 +654,7 @@ This section provides guidance on identifying, understanding, and acting on perf
      or if you are beyond the scaling limit, use fewer total ranks (or nodes).
 
      - Use ``tune_pme``
-       
-- Error (abort):
 
-  ::
-  
-     Update task on the GPU was required, but the following condition(s) were not satisfied:
-     Virtual sites are not supported.
-     Non-connecting constraints are not supported
-     The number of coupled constraints is higher than supported in the CUDA LINCS
-
-- Fatal error:
-
-  ::
-     
-     There is no domain decomposition for 11 ranks that is compatible with the
-     given box and a minimum cell size of 0.79375 nm
-     Change the number of ranks or mdrun option -rdd or -dds
-     Look in the log file for details on the domain decomposition
-     
-
--  Fatal error:
-
-   ::
-
-      The number of ranks selected for particle-particle work (383) contains a large
-      prime factor 383. In most cases this will lead to bad performance. Choose a
-      number with smaller prime factors or set the decomposition (option -dd)
-      manually.
 
 
 
