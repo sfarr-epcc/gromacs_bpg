@@ -1,3 +1,7 @@
+============
+benchRIB.mdp
+============
+
 ::
 
    integrator                     = md

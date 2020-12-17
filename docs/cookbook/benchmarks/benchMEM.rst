@@ -1,3 +1,7 @@
+============
+benchMEM.mdp
+============
+
 ::
 
    integrator                     = md

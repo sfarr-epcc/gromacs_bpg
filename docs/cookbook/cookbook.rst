@@ -196,14 +196,19 @@ OpenMP threads and GPU offloading options. However currently
 possible when running on more than one node as this restricts GROMACS
 to run on a single rank and hence on a single node. 
 
-The benefit of offloading PME calculations, which need to take place
-on a single rank running on a single GPU, is likely to be reduced when
-attempting to scale simulations to larger numbers of nodes as
-additional communication will be needed between this rank and all
-other ranks. At some point therefore it may be faster on the same
-number of nodes to run multiple dedicated PME ranks - a number chosen
-using ```tune_pme``` - on CPU cores, instead of offloading all PME
-calculations to a single GPU.
+Offloading PME calculations to GPU can currently (GROMACS 2020) only
+take place on a single rank using a single GPU. The performance
+advantage this typically gives over CPU-based PME computation on a
+single or small number of nodes can therefore start to diminish when
+running on larger numbers of nodes thanks to the growing compute power
+of an increasing number of PME ranks running on CPU cores. One
+therefore expects a crossover point beyond which it is faster on a
+given number of nodes to run multiple dedicated PME ranks - e.g. a
+number chosen optimally using ```tune_pme``` - on CPU cores, instead
+of offloading all PME calculations to a single GPU. The node count at
+which this occurs will depend on factors such as the system size,
+chosen MD parameters, and the relative performance of GPUs and CPUs
+available in a machine.
 
 
 
@@ -253,6 +258,7 @@ https://www.hecbiosim.ac.uk/benchmarks
 - **benchMEM**:
    * Protein in membrane, surrounded by water
    * Total number of atoms: 82k
+   * Input parameters: :doc:`benchMEM.mdp <benchmarks/benchMEM>`
      
 
 - **465k_HBS**:
@@ -262,14 +268,17 @@ https://www.hecbiosim.ac.uk/benchmarks
    * Lipid atoms: 134,268
    * Water atoms: 309,087
    * Ions: 295
+   * Input parameters: :doc:`465k_HBS.mdp <benchmarks/465k_HBS>`
     
 - **benchRIB**:
    * Ribosome in water
    * Total number of atoms: 2M
+   * Input parameters: :doc:`benchRIB.mdp <benchmarks/benchRIB>`
 
 - **benchPEP**:
    * Peptides in water
    * Total number of atoms: 12M
+   * Input parameters: :doc:`benchPEP.mdp <benchmarks/benchPEP>`
 
   
 
@@ -491,11 +500,31 @@ the most relevant, i.e. some of the best-performing execution
 scenarios are shown for each benchmark. Error bars (offset upward from
 measurements) indicate the hypothetical maximum obtainable performance
 if the combined load imbalances between spatial domains and between PP
-and PME ranks reported by GROMACS were absent.
+and PME ranks reported by GROMACS were absent. Offloading of
+coordinate updating is not included as this is only relevant for
+single node runs using a single rank, where it is however worth using
+to obtain good performance.
+
+As argued in the general guidance above for GPU offloading, there is a
+crossover point beyond which overall performance is higher using
+dedicated PME ranks running on CPU cores rather than offloading PME
+computation to a single GPU. For smaller systems this point is more
+likely to lie beyond the number of nodes that are reasonable to use,
+i.e.  past the point of badly diminishing returns in performance
+gained from emplying additional nodes (low parallel efficiency),
+meaning that for all runs with reasonable parallel efficiency GPU
+offloading of PME gives highest performance. For larger systems
+however the crossover point is before the limit of good scaling,
+meaning that whereas best performance on small number of nodes is
+obtained with use of PME offloading, to scale well to larger numbers
+of nodes this should be disabled and only nonbonded interactions
+should be offloaded to GPU. 
 
 
 
-.. list-table:: 
+
+
+.. list-table::
    :align: center
 	   
    * - .. figure:: results/pizdaint/20k_HBS_1smt_002mpi_006omp_dlbNO_tunepmeNO-nsperday.svg

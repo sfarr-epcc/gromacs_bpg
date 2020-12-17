@@ -1,3 +1,7 @@
+============
+benchPEP.mdp
+============
+
 ::
 
    integrator                     = md
