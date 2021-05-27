@@ -93,13 +93,32 @@ makes it easy to keep track of water models available. A line and descripting
 can be added in this file for each water-model included topology file. This 
 file is what prompts the choice of water model in ``pdb2gmx``.
 
-Once it is populated, running ``pdb2gmx`` in the directory containing your ``<forcefield>.ff`` directory will result in your new forcefield being included 
+Once it is populated, running ``pdb2gmx`` in the directory containing your 
+``<forcefield>.ff`` directory will result in your new forcefield being included 
 at the top of the list of selectable forcefields. If you are happy with your 
 ``<forcefield>.ff`` directory and you will use it a lot (and if you have the 
 correct permissions to edit parts of the GROMACS directory), you can copy it to 
 the ``share/gromacs/top`` of the GROMACS directory (or to ``$GMXLIB`` which 
 should be the same directory). In doing so, your forcefield will become a 
 permanent part of the forcefields that ``pdb2gmx`` can use.
+
+.. note::
+
+  You can also generate an Amber or CHARMM topology by using the   AmberTool 
+  ``antechamber`` function or the CHARMM ``cgenff`` function. To do this, you 
+  should follow the procedures described above, making sure to select an 
+  appropriate forcefield from the selection GROMACS provides. Then, use a 
+  parameter-generating tool like ``antechamber`` with ``actype`` (for Amber) 
+  or ``cgenff`` (for CHARMM). The topologies generated in this way can then be 
+  added to the GROMACS topology that you generated. This can be done by 
+  opening the GROMACS topology file and including the following line at the start:
+  
+  .. code-block:: bash
+  
+    #include "/path/to/forcefield_file.itp"
+    
+  where the path is to the topology file generated in ``antechamber`` or 
+  ``cgenff``.
 
 For more information on generating your own forcefield, please see the GROMACS
 manual pages about 
@@ -110,8 +129,8 @@ and `force field organisations<http://manual.gromacs.org/documentation/current/r
 Preparing and solvating your simulation box
 -------------------------------------------
 
-Generating a system from a GROMACS structure file
-=================================================
+Generating a system of replicates from a GROMACS structure file
+================================================================
 
 It is possible to populate a simulation box by replicating the contents 
 of a GROMACS structure (``.gro``) file multiple times. This can be achieved 
@@ -190,16 +209,16 @@ system.
 For further information, please see the GROMACS manual 
 `gmx solvate<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-solvate.html>`_
 
-Creating a charge-neutral system
-================================
+Adding ions and creating a charge-neutral system
+================================================
 
-If the net charge of your system is already 0, you do not need to add ions 
-to neutralise your system (and can therefore skip this passage). If, on the 
-other hand, your system has a non-zero net charge, you may wish to consider 
-adding ions to neutralise your system. This is done in two parts: first, you 
-need to use the ``grompp`` tool to generate a ``.tpr`` file to be used when 
-adding ions, and then you must replace some of the recently-added solvent 
-molecules with the necessary counterions using ``genion``.
+Adding ions to your solvated system can serve two purposes: it can help to 
+neutralise any charge in your system; and it allows you to simulate systems 
+with similar salt concentrations to their real-world equivalents. Adding 
+ions is done in two parts: first, you need to use the ``grompp`` tool to 
+generate a ``.tpr`` file to be used when adding ions, and then you must 
+replace some of the recently-added solvent molecules with the necessary 
+counterions using ``genion``.
 
 The GROMACS preprocessor tool ``grompp`` reads in coordinate and topology 
 files to generate an atomic-level input file (with a ``.tpr`` extension). 
@@ -328,7 +347,6 @@ The GROMACS manual has the following
   tcoupl                   = V-rescale
   tc-grps                  = Protein  SOL
   ref-t                    = 300      300
-  tau-t                    = 0.1      0.1
   
   ; Barostat
   pcoupl                   = Parrinello-Rahman
@@ -339,7 +357,7 @@ The GROMACS manual has the following
 First note that, while the the example above is ordered in a sensible way, 
 with commands grouped by what they are defining (*e.g.* temperature, pressure, 
 van der Waals interactions, *etc.*), the order in which the individual 
-commands are written should not matter. Having said that, we would recommend 
+commands are written does not matter. Having said that, we would recommend 
 grouping commands affecting similar simulation aspects together to help 
 future readability. Also, if the same command appears twice in a 
 ``.mdp`` file, the second appearance will override the first.
@@ -381,13 +399,6 @@ temperature (or desired temperature) is set by ``ref-t``. In this case, the
 reference temperature for both the protein and the solvent have been set to 
 300 K. Note that the reference temperature must be set for every group defined 
 in ``tc-grps`` and that these temperatures do not need to be the same.
-The temperature coupling time constant is defined by ``tau-t`` as being 0.1 
-ps. This coupling time constant controls how much, and over what timescales, 
-the thermostat is allowed to fluctuate -- a high coupling time usually leads 
-to long, low-amplitude oscillations about the mean the system temperature, 
-whereas low coupling  often leads to short, large-amplitude oscillations. 
-Note that, like with the system temperature, this must be defined for each 
-group separately (hence the two values inthe example script).
 
 In this example script, the barostat is defined with the ``pcoul`` parameter 
 as the Parinello-Rahman barostat. The reference (or desired) pressure is set 
@@ -503,10 +514,19 @@ your ``mdrun``, you can simply use ``confout.gro``. The ``make_ndx`` command
 will analyse the system, and output the default index groups. It is possible 
 to create new index groups by using the command prompts listed (for instance, 
 you can create a group composed of only the oxygens from the solvent waters by 
-running ``a OW`` within ``make_ndx``). For more information, please see the 
+running ``a OW`` within ``make_ndx``). For more information, please see the
 GROMACS manual
 `gmx make_ndx<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-make_ndx.html>`_ 
 page.
+
+
+For more complex manipulations than selecting all of one group of atoms, 
+GROMACS provides the ``gmx select`` option. This will allow you to define 
+the exact time or particles or regions of interest within your simulation. 
+You can find more information on how to use this in the GROMACS manual
+`Groups and Selections<https://manual.gromacs.org/documentation/2019/reference-manual/analysis/using-groups.html#selections>`_
+page.
+
 
 Radial distribution function
 ----------------------------
