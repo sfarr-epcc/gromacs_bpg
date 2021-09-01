@@ -5,12 +5,13 @@ Suggested workflow for GROMACS simulations
 This part of the GROMACS best practice guide walks you through a suggested
 workflow for preparing, running, and analysing the results of your GROMACS
 simulations. There are already many very good tutorials available to teach 
-new users how to do this. Here, we have collated and compiled the suggestions 
+new users how to do this (see below).  
+Here, we have collated and compiled the suggestions 
 of these tutorials into what we believe to be the best way to prepare and run 
 a GROMACS simulation.
 
 This section is divided as follows: first we will describe how to choose and
-prepare your system; we will then discuss the correct way to run your GROMACS 
+prepare the input files for your system; we will then discuss the correct way to run your GROMACS 
 simulations; and we will finish by discussing some of the post-analysis tools 
 that are available.
 
@@ -43,9 +44,9 @@ a number of AMBER and GROMOS forcefields, as well as a CHARMM and an OPLS-AA
 option. You will also need to specify your water model (choices included are 
 TIP models, and the SPC and SPC/E models). Specifying the water model here 
 results in ``pdb2gmx`` to write a complete topology and will ensure that all
-forcefields are consistent if the system needs to be hydrated. The code above 
-produces three outputs: a system topology ``topol.top``, an "included 
-topology" ``posre.itp``, and a forcefield coordinate file ``conf.gro``. 
+topology files are consistent if the system needs to be hydrated. The code above 
+produces three outputs: a system topology ``topol.top``, a 
+position restraint file ``posre.itp`` (included in the topology file), and a coordinate file ``conf.gro``. 
 Further to these files, ``pdb2gmx`` will output a number of interesting 
 details to screen, such as the total mass of the system given the coordinates 
 and topology being used as well as the net charge of the system. The charge 
@@ -55,11 +56,6 @@ ionise a system`_ step of system preparation.
 More information about the flags and options of this program can be found in 
 the GROMACS 
 `PDB2GMX manual<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html>`_.
-
-.. note::
-
-  One limitation of ``pdb2gmx``is that it gives less accurate results for 
-  branched/non-linear bonds.
 
 Generating your own forcefield file
 -----------------------------------
@@ -79,7 +75,7 @@ replaced by a sensible name. Within this directory, create a
 ``forcefield.doc`` file and write a simple one-sentence description of your 
 forcefield -- this description is what will come up in ``pdb2gmx`` when you 
 choose a forcefield. Next, generate a ``forcefield.itp`` included topology 
-file. This file is a topology file where you can define the properties of 
+file. This file is a topology file where you can define the parameters for 
 atoms, bond, angles, dihedrals, *etc.*. You can find more information about 
 generating topology files from scratch in the GROMACS manual 
 `file format page<http://manual.gromacs.org/documentation/current/reference-manual/file-formats.html#top>`_.
@@ -132,14 +128,14 @@ Preparing and solvating your simulation box
 Generating a system of replicates from a GROMACS structure file
 ================================================================
 
-It is possible to populate a simulation box by replicating the contents 
-of a GROMACS structure (``.gro``) file multiple times. This can be achieved 
+It is possible to populate a simulation box with molecules by replicating the contents 
+of a GROMACS structure file (``.gro``) multiple times. This can be achieved 
 with the ``insert-molecules`` command. While any structure file can be used 
-(including full system files), this is particularly useful if you want to 
+(including crowded system file), this is particularly useful if you want to 
 create a system with a large number of copies of a single molecule (*i.e.* 
 as found in a lipid bilayer or a non-aqueous solvent). Furthermore, the 
 topology (``.top``) file generated for the system to be replicated will still 
-work for the new, larger system.
+work for the new, larger system, by including the total number of molecules in the directive [molecules].
 
 To generate a system using this command, run:
 
@@ -199,7 +195,7 @@ to solvate a pre-existing box. To use it, run:
               -o ${OUTPUT}.gro
   
 where ``${SOLUTE}.gro`` is the simulation box configured using the steps 
-described above, ``${SOLVENT}.gro`` is the solvent configuration file (node 
+described above, ``${SOLVENT}.gro`` is the solvent configuration file (note 
 that GROMACS has a number of pre-defined solvent configuration files but that 
 you can also prepare and use your own), and ``${TOPOLOGY}.top`` is the 
 topology obtained when running `GMX2PDB`_. If using a GROMACS-provided 
@@ -309,7 +305,7 @@ Example molecular dynamics parameter file
   GROMACS has been developed to be forcefield agnostic. This means that a 
   large number of different forcefields can be run using GROMACS. However, 
   this also means that different forcefields will require slightly different 
-  constraints to be defined in their dynamic parameter files. You can find 
+  constraints to be defined in their ".mdp" parameter files. You can find 
   more about this in the 
   `Force fields in GROMACS<http://manual.gromacs.org/documentation/current/user-guide/force-fields.html>`_
   section of the GROMACS manual.
@@ -353,6 +349,12 @@ The GROMACS manual has the following
   ref-p                    = 1.0
   tau-p                    = 2.0
   compressibility          = 4.5e-5
+
+.. note::
+
+    The parameters chosen for time step, bond constraints and van der Waals/electrostatic 
+    interactions depend on the force field being used. 
+   
 
 First note that, while the the example above is ordered in a sensible way, 
 with commands grouped by what they are defining (*e.g.* temperature, pressure, 
@@ -408,7 +410,7 @@ thermostat, the pressure coupling time constant is used to dictate the
 frequency and amplitude of fluctuations during a simulation. Finally, the 
 ``compressibility`` parameter is used to define the compressibility of the 
 system (how the volume of the system changes as pressure is changed). In this 
-case, it is set as 4.5e-5 bar^-1.
+case, it is set as 4.5e-5 bar^-1 (water compressibility).
 
 Generating your simulation input file
 -------------------------------------
@@ -451,7 +453,8 @@ thermodynamic information output during the run (*e.g.* energy breakdowns,
 instantaneous presssure and temperature, system denstity, *etc.*). Likewise, 
 the ``md.log`` file generated outputs these properties, but in a text format. 
 The ``traj.trr`` file is a binary that contains details of the simulation 
-trajectory. The final file produced by default is the ``counfout.gro`` is a 
+trajectory and ``xtc`` file is a compressed and portable format for trajectories.
+The final file produced by default is the ``counfout.gro`` is a 
 text file containing the particle coordinates and velocities for the final 
 step of the simulation.
 
@@ -606,6 +609,7 @@ Further resources
 There are a number of excellent GROMACS tutorials that name a number of 
 commands not mentioned here. The following tutorials are highly recommended:
 
+ * `GROMACS tutorial by GROMACS team <http://tutorials.gromacs.org>`_
  * `GROMACS Tutorial by Justin A. Lemkhul<http://www.mdtutorials.com/gmx/>`_
  * `GROMACS Tutorial by Wes Barnett<https://www.svedruziclab.com/tutorials/gromacs/>`_
 
