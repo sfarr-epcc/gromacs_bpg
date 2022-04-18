@@ -50,12 +50,13 @@ position restraint file ``posre.itp`` (included in the topology file), and a coo
 Further to these files, ``pdb2gmx`` will output a number of interesting 
 details to screen, such as the total mass of the system given the coordinates 
 and topology being used as well as the net charge of the system. The charge 
-is particularly important to note down and will be used in the `Solvating and 
-ionise a system`_ step of system preparation.
+is particularly important to note down and will be used in the 
+`Solvating a system`_ and `Adding ions and creating a charge-neutral system`_ 
+steps of system preparation.
 
 More information about the flags and options of this program can be found in 
 the GROMACS 
-`PDB2GMX manual<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html>`_.
+`PDB2GMX manual <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html>`_.
 
 Generating your own forcefield file
 -----------------------------------
@@ -78,7 +79,7 @@ choose a forcefield. Next, generate a ``forcefield.itp`` included topology
 file. This file is a topology file where you can define the parameters for 
 atoms, bond, angles, dihedrals, *etc.*. You can find more information about 
 generating topology files from scratch in the GROMACS manual 
-`file format page<http://manual.gromacs.org/documentation/current/reference-manual/file-formats.html#top>`_.
+`file format page <http://manual.gromacs.org/documentation/current/reference-manual/file-formats.html#top>`_.
 
 Using a ``<forcefield>.ff`` directory has a number of advantages over writing 
 out your system topologies directly. For one, this allows for better 
@@ -118,8 +119,8 @@ permanent part of the forcefields that ``pdb2gmx`` can use.
 
 For more information on generating your own forcefield, please see the GROMACS
 manual pages about 
-`adding a residue<http://manual.gromacs.org/documentation/current/how-to/topology.html>`_
-and `force field organisations<http://manual.gromacs.org/documentation/current/reference-manual/topologies/force-field-organization.html>`_.
+`adding a residue <http://manual.gromacs.org/documentation/current/how-to/topology.html>`_
+and `force field organisations <http://manual.gromacs.org/documentation/current/reference-manual/topologies/force-field-organization.html>`_.
 
 -------------------------------------------
 Preparing and solvating your simulation box
@@ -155,7 +156,7 @@ of defining the default van der Waals distance between atoms in your system, a
 way of inserting new molecules into an existing system, and methods to control 
 the amount of random rotation that replicated molecules can undergo. All of 
 these options can be found in the 
-`gmx insert-molecules<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-insert-molecules.html>`_ page of the GROMACS manual.
+`gmx insert-molecules <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-insert-molecules.html>`_ page of the GROMACS manual.
 
 Generating a simulation box
 ===========================
@@ -181,7 +182,7 @@ the default, but other options are cubic, octohedral, or dodecahedral). There
 are a number of other ``editconf`` options, predominantly to have more 
 control over defining the simulation box. These can be found in the GROMACS 
 manual 
-`gmx editconf page<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-editconf.html>`_.
+`gmx editconf page <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-editconf.html>`_.
 
 Solvating a system
 ==================
@@ -198,12 +199,12 @@ where ``${SOLUTE}.gro`` is the simulation box configured using the steps
 described above, ``${SOLVENT}.gro`` is the solvent configuration file (note 
 that GROMACS has a number of pre-defined solvent configuration files but that 
 you can also prepare and use your own), and ``${TOPOLOGY}.top`` is the 
-topology obtained when running `GMX2PDB`_. If using a GROMACS-provided 
+topology obtained when running `PDB2GMX`_. If using a GROMACS-provided 
 solvent, the addition of this solvent should not alter the net charge of the 
 system.
 
 For further information, please see the GROMACS manual 
-`gmx solvate<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-solvate.html>`_
+`gmx solvate <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-solvate.html>`_
 
 Adding ions and creating a charge-neutral system
 ================================================
@@ -260,8 +261,8 @@ respectively, but this can be changed with the ``-pq`` flag for the cation and
 the ``-nq`` flag for the anion.
 
 For further information, please see the GROMACS manual  
-`gmx grompp<http://manual.gromacs.org/current/onlinehelp/gmx-grompp.html>`_, 
-and `gmx genion<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-genion.html>`_ 
+`gmx grompp <http://manual.gromacs.org/current/onlinehelp/gmx-grompp.html>`_, 
+and `gmx genion <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-genion.html>`_ 
 pages.
 
 --------------------
@@ -295,7 +296,7 @@ the number of options and variables that can be included, not included, or
 kept as default, we will not go over all of the options here and will instead 
 look at and explain an example molecular dynamics parameter file. You can find 
 a list of all available options in the GROMACS manual
-`molecular dynamics parameters page<http://manual.gromacs.org/documentation/current/user-guide/mdp-options.html>`_.
+`molecular dynamics parameters page <http://manual.gromacs.org/documentation/current/user-guide/mdp-options.html>`_.
 
 Example molecular dynamics parameter file
 -----------------------------------------
@@ -307,12 +308,12 @@ Example molecular dynamics parameter file
   this also means that different forcefields will require slightly different 
   constraints to be defined in their ".mdp" parameter files. You can find 
   more about this in the 
-  `Force fields in GROMACS<http://manual.gromacs.org/documentation/current/user-guide/force-fields.html>`_
+  `Force fields in GROMACS <http://manual.gromacs.org/documentation/current/user-guide/force-fields.html>`_
   section of the GROMACS manual.
   
 
 The GROMACS manual has the following 
-`example script<http://manual.gromacs.org/documentation/current/user-guide/file-formats.html#mdp>`_:
+`example script <http://manual.gromacs.org/documentation/current/user-guide/file-formats.html#mdp>`_:
 
 .. code-block:: bash
 
@@ -418,9 +419,9 @@ Generating your simulation input file
 Once you have prepared your ``.mdp`` file, you are ready to combine it with 
 the topology you've prepared to create a run input ``.tpr`` file. For this, we 
 will use the GROMACS pre-processing tool ``grompp``. This is very similar to 
-the step described in the `Creating a charge-neutral system`_ section, but 
-with more care regarding the warnings that are output. Like before, this is 
-done by running:
+the step described in the `Adding ions and creating a charge-neutral system`_ 
+section, but with more care regarding the warnings that are output. Like 
+before, this is done by running:
 
 .. code-block:: bash
 
@@ -466,7 +467,7 @@ defining input files (and input file types), output files, and parameters
 related to the computational system on which you are running (such as the 
 ``-nt`` option to set the number of MPI threads that the simulation should 
 use). More information on these and other options can be found on the GROMACS 
-`gmx mdrun<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-mdrun.html>`_
+`gmx mdrun <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-mdrun.html>`_
 page.
 
 Post-processing and analysis tools
@@ -495,7 +496,7 @@ output (*e.g.* potential energy, kinetic energy, pressure, temperature,
 plotted, will show you how that property varied over the simulation run. 
 There are a number of other options for the ``energy`` command, and these 
 can be found in the GROMACS manual 
-`gmx energy<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-energy.html#gmx-.. energy>`_
+`gmx energy <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-energy.html#gmx-.. energy>`_
 page.
 
 Generating an index file
@@ -519,7 +520,7 @@ to create new index groups by using the command prompts listed (for instance,
 you can create a group composed of only the oxygens from the solvent waters by 
 running ``a OW`` within ``make_ndx``). For more information, please see the
 GROMACS manual
-`gmx make_ndx<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-make_ndx.html>`_ 
+`gmx make_ndx <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-make_ndx.html>`_ 
 page.
 
 
@@ -527,7 +528,7 @@ For more complex manipulations than selecting all of one group of atoms,
 GROMACS provides the ``gmx select`` option. This will allow you to define 
 the exact time or particles or regions of interest within your simulation. 
 You can find more information on how to use this in the GROMACS manual
-`Groups and Selections<https://manual.gromacs.org/documentation/2019/reference-manual/analysis/using-groups.html#selections>`_
+`Groups and Selections <https://manual.gromacs.org/documentation/2019/reference-manual/analysis/using-groups.html#selections>`_
 page.
 
 
@@ -564,9 +565,9 @@ functions. Here, we will look at two specific example: the mean-squared
 displacement (MSD) and velocity autocorrelation function (VACF). We will focus 
 on how to generate these functions within GROMACS but you can use these links 
 to find an overview of the theory behind the 
-`MSD<http://manual.gromacs.org/documentation/current/reference-manual/analysis/mean-square-displacement.html>`_
+`MSD <http://manual.gromacs.org/documentation/current/reference-manual/analysis/mean-square-displacement.html>`_
 and the 
-`VACF<http://manual.gromacs.org/documentation/2019/reference-manual/analysis/correlation-function.html>`_.
+`VACF <http://manual.gromacs.org/documentation/2019/reference-manual/analysis/correlation-function.html>`_.
 
 Calculating the MSD of parts of a system can be done using the ``gmx msd``. 
 This can be run using:
@@ -585,7 +586,7 @@ present in the list, you can generate an index file (see
 `Generating an index file`_) where you can define this new group. To include 
 this index file, add the option ``-n ${INDEX_FILE}.ndx`` to the command above.
 For more information and options, please look at the GROMACS manual page on 
-the `gmx msd command<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-msd.html#gmx-msd>`_.
+the `gmx msd command <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-msd.html#gmx-msd>`_.
 
 VACFs can be generated using the ``gmx velacc`` command:
 
@@ -600,7 +601,7 @@ present, you may need to create it by following the instructions in the
 `Generating an index file`_ section of the manual. To include your index file, 
 add it with the ``-n ${INPUT_INDEX}.ndx`` option. You can find more options 
 and information on the GROMACS manual 
-`gmx velacc<http://manual.gromacs.org/documentation/current/onlinehelp/gmx-velacc.html#gmx-velacc>`_ page.
+`gmx velacc <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-velacc.html#gmx-velacc>`_ page.
 
 -----------------
 Further resources
@@ -610,9 +611,9 @@ There are a number of excellent GROMACS tutorials that name a number of
 commands not mentioned here. The following tutorials are highly recommended:
 
  * `GROMACS tutorial by GROMACS team <http://tutorials.gromacs.org>`_
- * `GROMACS Tutorial by Justin A. Lemkhul<http://www.mdtutorials.com/gmx/>`_
- * `GROMACS Tutorial by Wes Barnett<https://www.svedruziclab.com/tutorials/gromacs/>`_
+ * `GROMACS Tutorial by Justin A. Lemkhul <http://www.mdtutorials.com/gmx/>`_
+ * `GROMACS Tutorial by Wes Barnett <https://www.svedruziclab.com/tutorials/gromacs/>`_
 
 Furthermore, the 
-`GROMACS How-To guides<>http://manual.gromacs.org/documentation/current/how-to/index.html`_
+`GROMACS How-To guides <http://manual.gromacs.org/documentation/current/how-to/index.html>`_
 provide a lot of information as well.
