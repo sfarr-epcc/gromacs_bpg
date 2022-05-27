@@ -1,0 +1,738 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Suggested workflow for GROMACS simulations &#8212; GROMACS Best Practice Guide  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Performance Cookbook" href="../cookbook/cookbook.html" />
+    <link rel="prev" title="GROMACS Best Practice Guide" href="../index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../cookbook/cookbook.html" title="Performance Cookbook"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="GROMACS Best Practice Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">GROMACS Best Practice Guide  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Suggested workflow for GROMACS simulations</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="suggested-workflow-for-gromacs-simulations">
+<h1>Suggested workflow for GROMACS simulations<a class="headerlink" href="#suggested-workflow-for-gromacs-simulations" title="Permalink to this headline"></a></h1>
+<p>This part of the GROMACS best practice guide walks you through a suggested
+workflow for preparing, running, and analysing the results of your GROMACS
+simulations. There are already many very good tutorials available to teach
+new users how to do this (see below).
+Here, we have collated and compiled the suggestions
+of these tutorials into what we believe to be the best way to prepare and run
+a GROMACS simulation.</p>
+<p>This section is divided as follows: first we will describe how to choose and
+prepare the input files for your system; we will then discuss the correct way to run your GROMACS
+simulations; and we will finish by discussing some of the post-analysis tools
+that are available.</p>
+<p>Note that this section is written with the intent of helping users to use
+GROMACS. Some of the sections use examples of common shell-scripting
+practices – it is assumed that the reader is either familiar with basic
+shell-scripting or knows where to learn more about this. Likewise, the
+background theory behind some of the techniques discussed in the post-analysis
+section is not presented here. Where possible, we have added links to places
+where this theory is explained.</p>
+<section id="preparing-the-system">
+<h2>Preparing the system<a class="headerlink" href="#preparing-the-system" title="Permalink to this headline"></a></h2>
+<section id="pdb2gmx">
+<h3>PDB2GMX<a class="headerlink" href="#pdb2gmx" title="Permalink to this headline"></a></h3>
+<p>The GROMACS <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code> command is used to convert a coordinate file into a
+set of GROMACS topology files (in these examples, we will assume that the
+file is a <code class="docutils literal notranslate"><span class="pre">.pdb</span></code> file, but this is not a necessity). To run this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx pdb2gmx -f <span class="si">${</span><span class="nv">INPUT_FILE</span><span class="si">}</span>.pdb
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${INPUT_FILE}.pdb</span></code> is replaced with the input file name. You will be
+prompted to select the forcefield you would like to use. GROMACS comes with
+a number of AMBER and GROMOS forcefields, as well as a CHARMM and an OPLS-AA
+option. You will also need to specify your water model (choices included are
+TIP models, and the SPC and SPC/E models). Specifying the water model here
+results in <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code> to write a complete topology and will ensure that all
+topology files are consistent if the system needs to be hydrated. The code above
+produces three outputs: a system topology <code class="docutils literal notranslate"><span class="pre">topol.top</span></code>, a
+position restraint file <code class="docutils literal notranslate"><span class="pre">posre.itp</span></code> (included in the topology file), and a coordinate file <code class="docutils literal notranslate"><span class="pre">conf.gro</span></code>.
+Further to these files, <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code> will output a number of interesting
+details to screen, such as the total mass of the system given the coordinates
+and topology being used as well as the net charge of the system. The charge
+is particularly important to note down and will be used in the
+<a class="reference internal" href="#solvating-a-system">Solvating a system</a> and <a class="reference internal" href="#adding-ions-and-creating-a-charge-neutral-system">Adding ions and creating a charge-neutral system</a>
+steps of system preparation.</p>
+<p>More information about the flags and options of this program can be found in
+the GROMACS
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html">PDB2GMX manual</a>.</p>
+<section id="generating-your-own-forcefield-file">
+<h4>Generating your own forcefield file<a class="headerlink" href="#generating-your-own-forcefield-file" title="Permalink to this headline"></a></h4>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It is advised to use one of the pre-existing GROMACS forcefields where
+possible. Only consider generating your own forcefield if the ones
+available on GROMACS do not fulfill your requirements.</p>
+</div>
+<p>GROMACS comes with a number of forcefields available out of the box. These
+forcefields are stored within the main GROMACS directory in
+<code class="docutils literal notranslate"><span class="pre">share/gromacs/top</span></code>. If the forcefield you want to use is not present, you
+will need to generate your own forcefield files. To do this, create a
+directory <code class="docutils literal notranslate"><span class="pre">&lt;forcefield&gt;.ff</span></code> in your working directory, with <code class="docutils literal notranslate"><span class="pre">&lt;forcefield&gt;</span></code>
+replaced by a sensible name. Within this directory, create a
+<code class="docutils literal notranslate"><span class="pre">forcefield.doc</span></code> file and write a simple one-sentence description of your
+forcefield – this description is what will come up in <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code> when you
+choose a forcefield. Next, generate a <code class="docutils literal notranslate"><span class="pre">forcefield.itp</span></code> included topology
+file. This file is a topology file where you can define the parameters for
+atoms, bond, angles, dihedrals, <em>etc.</em>. You can find more information about
+generating topology files from scratch in the GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/reference-manual/file-formats.html#top">file format page</a>.</p>
+<p>Using a <code class="docutils literal notranslate"><span class="pre">&lt;forcefield&gt;.ff</span></code> directory has a number of advantages over writing
+out your system topologies directly. For one, this allows for better
+reproducibility in the even that you want to simulate a new system with this
+forcefield. It also has a number of functionalities that can be useful. For
+instance, adding a <code class="docutils literal notranslate"><span class="pre">watermodels.dat</span></code> file into the forcefield directory
+makes it easy to keep track of water models available. A line and description
+can be added in this file for each water-model included topology file. This
+file is what prompts the choice of water model in <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code>.</p>
+<p>Once it is populated, running <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code> in the directory containing your
+<code class="docutils literal notranslate"><span class="pre">&lt;forcefield&gt;.ff</span></code> directory will result in your new forcefield being included
+at the top of the list of selectable forcefields. If you are happy with your
+<code class="docutils literal notranslate"><span class="pre">&lt;forcefield&gt;.ff</span></code> directory and you will use it a lot (and if you have the
+correct permissions to edit parts of the GROMACS directory), you can copy it to
+the <code class="docutils literal notranslate"><span class="pre">share/gromacs/top</span></code> of the GROMACS directory (or to <code class="docutils literal notranslate"><span class="pre">$GMXLIB</span></code> which
+should be the same directory). In doing so, your forcefield will become a
+permanent part of the forcefields that <code class="docutils literal notranslate"><span class="pre">pdb2gmx</span></code> can use.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You can also generate an Amber or CHARMM topology by using the   AmberTool
+<code class="docutils literal notranslate"><span class="pre">antechamber</span></code> function or the CHARMM <code class="docutils literal notranslate"><span class="pre">cgenff</span></code> function. To do this, you
+should follow the procedures described above, making sure to select an
+appropriate forcefield from the selection GROMACS provides. Then, use a
+parameter-generating tool like <code class="docutils literal notranslate"><span class="pre">antechamber</span></code> with <code class="docutils literal notranslate"><span class="pre">actype</span></code> (for Amber)
+or <code class="docutils literal notranslate"><span class="pre">cgenff</span></code> (for CHARMM). The topologies generated in this way can then be
+added to the GROMACS topology that you generated. This can be done by
+opening the GROMACS topology file and including the following line at the start:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1">#include &quot;/path/to/forcefield_file.itp&quot;</span>
+</pre></div>
+</div>
+<p>where the path is to the topology file generated in <code class="docutils literal notranslate"><span class="pre">antechamber</span></code> or
+<code class="docutils literal notranslate"><span class="pre">cgenff</span></code>.</p>
+</div>
+<p>For more information on generating your own forcefield, please see the GROMACS
+manual pages about
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/how-to/topology.html">adding a residue</a>
+and <a class="reference external" href="http://manual.gromacs.org/documentation/current/reference-manual/topologies/force-field-organization.html">force field organisations</a>.</p>
+</section>
+</section>
+</section>
+<section id="preparing-and-solvating-your-simulation-box">
+<h2>Preparing and solvating your simulation box<a class="headerlink" href="#preparing-and-solvating-your-simulation-box" title="Permalink to this headline"></a></h2>
+<section id="generating-a-system-of-replicates-from-a-gromacs-structure-file">
+<h3>Generating a system of replicates from a GROMACS structure file<a class="headerlink" href="#generating-a-system-of-replicates-from-a-gromacs-structure-file" title="Permalink to this headline"></a></h3>
+<p>It is possible to populate a simulation box with molecules by replicating the contents
+of a GROMACS structure file (<code class="docutils literal notranslate"><span class="pre">.gro</span></code>) multiple times. This can be achieved
+with the <code class="docutils literal notranslate"><span class="pre">insert-molecules</span></code> command. While any structure file can be used
+(including crowded system file), this is particularly useful if you want to
+create a system with a large number of copies of a single molecule (<em>i.e.</em>
+as found in a lipid bilayer or a non-aqueous solvent). Furthermore, the
+topology (<code class="docutils literal notranslate"><span class="pre">.top</span></code>) file generated for the system to be replicated will still
+work for the new, larger system, by including the total number of molecules in the directive [molecules].</p>
+<p>To generate a system using this command, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx insert-molecules -ci <span class="si">${</span><span class="nv">INPUT</span><span class="si">}</span>.gro -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.gro <span class="se">\</span>
+                     -nmol <span class="si">${</span><span class="nv">N</span><span class="si">}</span> -box <span class="si">${</span><span class="nv">X_LENGTH</span><span class="si">}</span> <span class="si">${</span><span class="nv">Y_LENGTH</span><span class="si">}</span> <span class="si">${</span><span class="nv">Z_LENGTH</span><span class="si">}</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${INPUT}.gro</span></code> is the structure file of the molecule/system you wish
+to replicate, <code class="docutils literal notranslate"><span class="pre">${OUTPUT}.gro</span></code> is the output file, <code class="docutils literal notranslate"><span class="pre">${N}</span></code> is the number of
+times that the contents of <code class="docutils literal notranslate"><span class="pre">${INPUT}.gro</span></code> will be replicated, and
+<code class="docutils literal notranslate"><span class="pre">${X_LENGTH}</span></code>, <code class="docutils literal notranslate"><span class="pre">${Y_LENGTH}</span></code>, and <code class="docutils literal notranslate"><span class="pre">${Z_LENGTH}</span></code> are the dimensions of
+the cubic box into which these <code class="docutils literal notranslate"><span class="pre">${N}</span></code> replicas must be packed.</p>
+<p>There are number of further options to help pack your system, including a way
+of defining the default van der Waals distance between atoms in your system, a
+way of inserting new molecules into an existing system, and methods to control
+the amount of random rotation that replicated molecules can undergo. All of
+these options can be found in the
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-insert-molecules.html">gmx insert-molecules</a> page of the GROMACS manual.</p>
+</section>
+<section id="generating-a-simulation-box">
+<h3>Generating a simulation box<a class="headerlink" href="#generating-a-simulation-box" title="Permalink to this headline"></a></h3>
+<p>Now that a topology has been generated, the next step is to generate a
+simulation box into which to place this topology. For this, use the
+<code class="docutils literal notranslate"><span class="pre">editconf</span></code> command. This tool has a number of functionalities, including
+generating and orienting a simulation box, and filing it with pre-generated
+topologies. To create a simulation box with <code class="docutils literal notranslate"><span class="pre">editconf</span></code>, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx editconf -f <span class="si">${</span><span class="nv">INPUT</span><span class="si">}</span>.gro -center -d <span class="si">${</span><span class="nv">SEPARATION</span><span class="si">}</span> -bt <span class="si">${</span><span class="nv">BOX_TYPE</span><span class="si">}</span> <span class="se">\</span>
+             -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.gro
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${INPUT}.gro</span></code> is the input forcefield-compliant coordinate file,
+<code class="docutils literal notranslate"><span class="pre">${OUTPUT}.gro</span></code> is the chosen output name (the default is <code class="docutils literal notranslate"><span class="pre">out.gro</span></code>),
+the <code class="docutils literal notranslate"><span class="pre">-c</span></code> flag will place the system described in <code class="docutils literal notranslate"><span class="pre">${INPUT}.gro</span></code> into the
+centre of the simulation box, <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">${SEPARATION}</span></code> defines the minimum
+separation between the input and the edge of the box (units are in nm), and
+<code class="docutils literal notranslate"><span class="pre">-bt</span> <span class="pre">${BOX_TYPE}</span></code> defines the type of box for the simulation (triclinic is
+the default, but other options are cubic, octohedral, or dodecahedral). There
+are a number of other <code class="docutils literal notranslate"><span class="pre">editconf</span></code> options, predominantly to have more
+control over defining the simulation box. These can be found in the GROMACS
+manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-editconf.html">gmx editconf page</a>.</p>
+</section>
+<section id="solvating-a-system">
+<h3>Solvating a system<a class="headerlink" href="#solvating-a-system" title="Permalink to this headline"></a></h3>
+<p>The aptly-named <code class="docutils literal notranslate"><span class="pre">solvate</span></code> tool can be used to create a box of solvent or
+to solvate a pre-existing box. To use it, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx solvate -cp <span class="si">${</span><span class="nv">SOLUTE</span><span class="si">}</span>.gro -cs <span class="si">${</span><span class="nv">SOLVENT</span><span class="si">}</span>.gro -p <span class="si">${</span><span class="nv">TOPOLOGY</span><span class="si">}</span>.top <span class="se">\</span>
+            -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.gro
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${SOLUTE}.gro</span></code> is the simulation box configured using the steps
+described above, <code class="docutils literal notranslate"><span class="pre">${SOLVENT}.gro</span></code> is the solvent configuration file (note
+that GROMACS has a number of pre-defined solvent configuration files but that
+you can also prepare and use your own), and <code class="docutils literal notranslate"><span class="pre">${TOPOLOGY}.top</span></code> is the
+topology obtained when running <a class="reference internal" href="#pdb2gmx">PDB2GMX</a>. If using a GROMACS-provided
+solvent, the addition of this solvent should not alter the net charge of the
+system.</p>
+<p>For further information, please see the GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-solvate.html">gmx solvate</a></p>
+</section>
+<section id="adding-ions-and-creating-a-charge-neutral-system">
+<h3>Adding ions and creating a charge-neutral system<a class="headerlink" href="#adding-ions-and-creating-a-charge-neutral-system" title="Permalink to this headline"></a></h3>
+<p>Adding ions to your solvated system can serve two purposes: it can help to
+neutralise any charge in your system; and it allows you to simulate systems
+with similar salt concentrations to their real-world equivalents. Adding
+ions is done in two parts: first, you need to use the <code class="docutils literal notranslate"><span class="pre">grompp</span></code> tool to
+generate a <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> file to be used when adding ions, and then you must
+replace some of the recently-added solvent molecules with the necessary
+counterions using <code class="docutils literal notranslate"><span class="pre">genion</span></code>.</p>
+<p>The GROMACS preprocessor tool <code class="docutils literal notranslate"><span class="pre">grompp</span></code> reads in coordinate and topology
+files to generate an atomic-level input file (with a <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> extension).
+This <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> file contains all of the parameters needed for all atoms in
+the system. We will go into more details about the <code class="docutils literal notranslate"><span class="pre">grompp</span></code> tool in the
+<a class="reference internal" href="#running-a-simulation">Running a simulation</a> section. For now, the important part is that, to
+generate a run input <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> file, <code class="docutils literal notranslate"><span class="pre">grompp</span></code> needs a structure (<code class="docutils literal notranslate"><span class="pre">.gro</span></code>)
+file, a topology (<code class="docutils literal notranslate"><span class="pre">.top</span></code>) file, and a file defining the instructions for
+the simulation run (this is kept in an <code class="docutils literal notranslate"><span class="pre">.mdp</span></code> file). This <code class="docutils literal notranslate"><span class="pre">.mdp</span></code> file can
+be kept empty when ionising the system as no actual simulation is to be run.
+To generate the <code class="docutils literal notranslate"><span class="pre">,tpr</span></code> file, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx grompp -f <span class="si">${</span><span class="nv">RUN_FILE</span><span class="si">}</span>.mdp -c <span class="si">${</span><span class="nv">COORDINATES</span><span class="si">}</span>.gro -p <span class="si">${</span><span class="nv">TOPOLOGY</span><span class="si">}</span>.top <span class="se">\</span>
+           -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.tpr
+</pre></div>
+</div>
+<p>It is likely that <code class="docutils literal notranslate"><span class="pre">grompp</span></code> will output a number of notes to screen (one of
+which should be reminding you of the net non-zero charge of your system). In
+this case, these can be ignored (this is an exception and is not usually true).</p>
+<p>Now that the <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> has been generated, <code class="docutils literal notranslate"><span class="pre">genion</span></code> can be used to make the
+charge of the system neutral. The system charge is decreased by replacing a
+number of parts of the system with anions and cations. This is done by
+running the following (note that the <code class="docutils literal notranslate"><span class="pre">${INPUT}.tpr</span></code> named below is likely
+to be the <code class="docutils literal notranslate"><span class="pre">${OUTPUT.tpr}</span></code> generated in the <code class="docutils literal notranslate"><span class="pre">grompp</span></code> step above):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx genion -s <span class="o">{</span>INPUT<span class="o">}</span>.tpr -p <span class="si">${</span><span class="nv">TOPOLOGY</span><span class="si">}</span>.top -neutral -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.gro
+</pre></div>
+</div>
+<p>You will be prompted to choose the group within your system (solvents,
+solutes, protein backbones, <em>etc.</em>) that you would like ions to replace, with
+the frequency of occurrence of each group also shown. Note that some groups
+may have overlap completely and be different names for the same group. In
+general, it is best to replace solvent molecules with ions (the group named
+<code class="docutils literal notranslate"><span class="pre">SOL</span></code>). Once a group is chosen, <code class="docutils literal notranslate"><span class="pre">genion</span></code> will replace a number of that
+group with anions and cations until the system is charge neutral. The default
+anion name is <code class="docutils literal notranslate"><span class="pre">CL</span></code>, though this name can be changed with the <code class="docutils literal notranslate"><span class="pre">-nname</span></code>
+flag, and the default cation name is <code class="docutils literal notranslate"><span class="pre">NA`,</span> <span class="pre">but</span> <span class="pre">this</span> <span class="pre">name</span> <span class="pre">can</span> <span class="pre">be</span> <span class="pre">changed</span> <span class="pre">with</span>
+<span class="pre">the</span> <span class="pre">``nname</span></code> flag. By default, the cation and anion charges are 1 and -1
+respectively, but this can be changed with the <code class="docutils literal notranslate"><span class="pre">-pq</span></code> flag for the cation and
+the <code class="docutils literal notranslate"><span class="pre">-nq</span></code> flag for the anion.</p>
+<p>For further information, please see the GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/current/onlinehelp/gmx-grompp.html">gmx grompp</a>,
+and <a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-genion.html">gmx genion</a>
+pages.</p>
+</section>
+</section>
+<section id="running-a-simulation">
+<h2>Running a simulation<a class="headerlink" href="#running-a-simulation" title="Permalink to this headline"></a></h2>
+<p>This section describes how to set the GROMACS simulation parameters, how to
+generate a run input file from a GROMACS topology and parameter file, how to
+run a simulation in GROMACS, and how to analyse the results produced. It is
+assumed that you already have a system topology ready to use (by following
+the steps in the <a class="reference internal" href="#preparing-the-system">Preparing the system</a> section) – if this is not the case,
+and if you are unsure how to create this topology, please read through that
+section.</p>
+<section id="creating-a-run-parameter-file">
+<h3>Creating a run parameter file<a class="headerlink" href="#creating-a-run-parameter-file" title="Permalink to this headline"></a></h3>
+<p>A GROMACS molecular dynamics parameter (<code class="docutils literal notranslate"><span class="pre">.mdp</span></code>) file defines the simulation
+parameters to be used during a simulation. A number of options can be set in
+this script, including: defining the simulation integrator that will define
+the method used to solve Newton’s equations to propagate the system forward in
+time; setting the size of the simulation timestep and total simulation time;
+setting the restrictions within which the system will be simulated (such as
+setting a system pressure/temperature through a thermostat or barostat);
+setting or adjusting the way the simulation forcefield is interpreted (by
+<em>e.g.</em> defining the way short- and long-ranged interactions are calculated
+and at what distance they are truncated); to define which simulation
+properties to output (and the output frequency); and many more options. Given
+the number of options and variables that can be included, not included, or
+kept as default, we will not go over all of the options here and will instead
+look at and explain an example molecular dynamics parameter file. You can find
+a list of all available options in the GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/user-guide/mdp-options.html">molecular dynamics parameters page</a>.</p>
+<section id="example-molecular-dynamics-parameter-file">
+<h4>Example molecular dynamics parameter file<a class="headerlink" href="#example-molecular-dynamics-parameter-file" title="Permalink to this headline"></a></h4>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>GROMACS has been developed to be forcefield agnostic. This means that a
+large number of different forcefields can be run using GROMACS. However,
+this also means that different forcefields will require slightly different
+constraints to be defined in their “.mdp” parameter files. You can find
+more about this in the
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/user-guide/force-fields.html">Force fields in GROMACS</a>
+section of the GROMACS manual.</p>
+</div>
+<p>The GROMACS manual has the following
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/user-guide/file-formats.html#mdp">example script</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="p">;</span> Intergrator, timestep, and total run <span class="nb">time</span>
+<span class="nv">integrator</span>               <span class="o">=</span> md
+<span class="nv">dt</span>                       <span class="o">=</span> <span class="m">0</span>.002
+<span class="nv">nsteps</span>                   <span class="o">=</span> <span class="m">500000</span>
+
+<span class="p">;</span> Logs and outputs
+<span class="nv">nstlog</span>                   <span class="o">=</span> <span class="m">5000</span>
+<span class="nv">nstenergy</span>                <span class="o">=</span> <span class="m">5000</span>
+
+<span class="p">;</span> Bond constraints
+<span class="nv">constraints</span>              <span class="o">=</span> all-bonds
+constraint-algorithm     <span class="o">=</span> lincs
+
+<span class="p">;</span> Van der Waals interactions
+<span class="nv">vdwtype</span>                  <span class="o">=</span> Cut-off
+<span class="nv">rvdw</span>                     <span class="o">=</span> <span class="m">1</span>.0
+cutoff-scheme            <span class="o">=</span> Verlet
+<span class="nv">DispCorr</span>                 <span class="o">=</span> EnerPres
+
+<span class="p">;</span> Coulombic interactions
+<span class="nv">coulombtype</span>              <span class="o">=</span> PME
+<span class="nv">rcoulomb</span>                 <span class="o">=</span> <span class="m">1</span>.0
+
+<span class="p">;</span> Thermostat
+<span class="nv">tcoupl</span>                   <span class="o">=</span> V-rescale
+tc-grps                  <span class="o">=</span> Protein  SOL
+ref-t                    <span class="o">=</span> <span class="m">300</span>      <span class="m">300</span>
+
+<span class="p">;</span> Barostat
+<span class="nv">pcoupl</span>                   <span class="o">=</span> Parrinello-Rahman
+ref-p                    <span class="o">=</span> <span class="m">1</span>.0
+tau-p                    <span class="o">=</span> <span class="m">2</span>.0
+<span class="nv">compressibility</span>          <span class="o">=</span> <span class="m">4</span>.5e-5
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The parameters chosen for time step, bond constraints and van der Waals/electrostatic
+interactions depend on the force field being used.</p>
+</div>
+<p>First note that, while the the example above is ordered in a sensible way,
+with commands grouped by what they are defining (<em>e.g.</em> temperature, pressure,
+van der Waals interactions, <em>etc.</em>), the order in which the individual
+commands are written does not matter. Having said that, we would recommend
+grouping commands affecting similar simulation aspects together to help
+future readability. Also, if the same command appears twice in a
+<code class="docutils literal notranslate"><span class="pre">.mdp</span></code> file, the second appearance will override the first.</p>
+<p>The first block of the example script defines the molecular dynamics
+integrator as a Verlet leap-frog algorithm (<code class="docutils literal notranslate"><span class="pre">integrator</span> <span class="pre">=</span> <span class="pre">md</span></code>), declares
+that the simulation timestep will be 2 fs (<code class="docutils literal notranslate"><span class="pre">dt</span> <span class="pre">=</span> <span class="pre">0.002</span></code>, where the default
+unit is ps), and that the simulation will run for a total of 500,000 <em>dt</em>
+timesteps (<code class="docutils literal notranslate"><span class="pre">nstep</span> <span class="pre">=</span> <span class="pre">500000</span></code>) or 1 ns.</p>
+<p>The next block defines the simulation outputs. <code class="docutils literal notranslate"><span class="pre">nstlog</span></code> sets the time
+interval between each output to log (<code class="docutils literal notranslate"><span class="pre">md.log</span></code>) of the energy components and
+physical properties of the system at 5,000 <em>dt</em>. <code class="docutils literal notranslate"><span class="pre">nstenergy</span></code> sets the time
+interval between each output to the energy file (<code class="docutils literal notranslate"><span class="pre">ener.edr</span></code>) of the energy
+components of the system at 5,000 <em>dt</em> – note that this file is written in
+binary.</p>
+<p>In this example, all bonds are constrained and set to be rigid. This is done
+with the <code class="docutils literal notranslate"><span class="pre">constraints</span> <span class="pre">=</span> <span class="pre">all-bonds</span></code> command. Furthermore, the constraint
+algorithm is set to be the linear constraint solver algorithm with the
+<code class="docutils literal notranslate"><span class="pre">constraint-algortihm</span> <span class="pre">=</span> <span class="pre">LINCS</span></code> command.</p>
+<p>The van der Waals interactions are set as truncated (<code class="docutils literal notranslate"><span class="pre">vdwtype</span> <span class="pre">=</span> <span class="pre">cutoff</span></code>),
+with a cutoff distance of 1 nm (<code class="docutils literal notranslate"><span class="pre">rvdw</span> <span class="pre">=</span> <span class="pre">1.0</span></code>). This means that no van der
+Waals interactions will be computed for pairs of particles whose
+centre-of-mass separation greater than 1 nm. To save in simulation time, a
+neighbour-list cutoff scheme is used. The <code class="docutils literal notranslate"><span class="pre">cutoff-scheme</span> <span class="pre">=</span> <span class="pre">Verlet</span></code> command
+specifies how this list is generated. A long-ranged dispersion correction to
+the energy and pressure is considered here with the <code class="docutils literal notranslate"><span class="pre">DispCorr</span> <span class="pre">=</span> <span class="pre">EnerPress</span></code>
+command. The Coulombic interactions will be calculated using the smooth
+particle-mesh Ewald (SPME) method (<code class="docutils literal notranslate"><span class="pre">coulombtype</span> <span class="pre">=</span> <span class="pre">PME</span></code>), with an interaction
+cutoff of 1 nm (<code class="docutils literal notranslate"><span class="pre">rcoulomb</span> <span class="pre">=</span> <span class="pre">1.0</span></code>).</p>
+<p>The thermostat used for this simulation is defined by the
+<code class="docutils literal notranslate"><span class="pre">tcoupl</span> <span class="pre">=</span> <span class="pre">v-rescale</span></code> – in this case, the velocity rescaling algorithm is
+used. The <code class="docutils literal notranslate"><span class="pre">tc-grps</span></code> is there to specify that the protein and solvent
+(<code class="docutils literal notranslate"><span class="pre">SOL</span></code>) should have separate heat baths for this simulations. The reference
+temperature (or desired temperature) is set by <code class="docutils literal notranslate"><span class="pre">ref-t</span></code>. In this case, the
+reference temperature for both the protein and the solvent have been set to
+300 K. Note that the reference temperature must be set for every group defined
+in <code class="docutils literal notranslate"><span class="pre">tc-grps</span></code> and that these temperatures do not need to be the same.</p>
+<p>In this example script, the barostat is defined with the <code class="docutils literal notranslate"><span class="pre">pcoul</span></code> parameter
+as the Parinello-Rahman barostat. The reference (or desired) pressure is set
+at 1 atm with the <code class="docutils literal notranslate"><span class="pre">ref-p</span></code> command, and the coupling time constant <code class="docutils literal notranslate"><span class="pre">tau-p</span></code>
+is set to 2 ps. Much like the temperature coupling time constant set for the
+thermostat, the pressure coupling time constant is used to dictate the
+frequency and amplitude of fluctuations during a simulation. Finally, the
+<code class="docutils literal notranslate"><span class="pre">compressibility</span></code> parameter is used to define the compressibility of the
+system (how the volume of the system changes as pressure is changed). In this
+case, it is set as 4.5e-5 bar^-1 (water compressibility).</p>
+</section>
+<section id="generating-your-simulation-input-file">
+<h4>Generating your simulation input file<a class="headerlink" href="#generating-your-simulation-input-file" title="Permalink to this headline"></a></h4>
+<p>Once you have prepared your <code class="docutils literal notranslate"><span class="pre">.mdp</span></code> file, you are ready to combine it with
+the topology you’ve prepared to create a run input <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> file. For this, we
+will use the GROMACS pre-processing tool <code class="docutils literal notranslate"><span class="pre">grompp</span></code>. This is very similar to
+the step described in the <a class="reference internal" href="#adding-ions-and-creating-a-charge-neutral-system">Adding ions and creating a charge-neutral system</a>
+section, but with more care regarding the warnings that are output. Like
+before, this is done by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx grompp -f <span class="si">${</span><span class="nv">RUN_FILE</span><span class="si">}</span>.mdp -c <span class="si">${</span><span class="nv">COORDINATES</span><span class="si">}</span>.gro -p <span class="si">${</span><span class="nv">TOPOLOGY</span><span class="si">}</span>.top <span class="se">\</span>
+           -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.tpr
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${RUN_FILE}.mdp</span></code> is file discussed in
+<a class="reference internal" href="#creating-a-run-parameter-file">Creating a run parameter file</a>, and <code class="docutils literal notranslate"><span class="pre">${COORDINATES}.gro</span></code> and
+<code class="docutils literal notranslate"><span class="pre">${TOPOLOGY}.top</span></code> were generated following the instructions in the
+<a class="reference internal" href="#preparing-the-system">Preparing the system</a> section. The <code class="docutils literal notranslate"><span class="pre">${OUTPUT}.tpr</span></code> file generated here
+is the only file needed to proceed with running a GROMACS molecular dynamics
+simulation.</p>
+</section>
+<section id="running-your-simulation">
+<h4>Running your simulation<a class="headerlink" href="#running-your-simulation" title="Permalink to this headline"></a></h4>
+<p>With the run input <code class="docutils literal notranslate"><span class="pre">.tpr</span></code> file now generated, we are ready to run a GROMACS
+simulation. For this, we will use the <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx mdrun -s <span class="si">${</span><span class="nv">INPUT</span><span class="si">}</span>.tpr
+</pre></div>
+</div>
+<p>This command will run the simulation with the topology that you’ve prepared
+and the molecular dynamics parameters that you’ve chosen.</p>
+<p>Once the simulation is complete, <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> will have produced a number of
+files. The <code class="docutils literal notranslate"><span class="pre">ener.edr</span></code> file is a semi-binary file that contains all of the
+thermodynamic information output during the run (<em>e.g.</em> energy breakdowns,
+instantaneous presssure and temperature, system denstity, <em>etc.</em>). Likewise,
+the <code class="docutils literal notranslate"><span class="pre">md.log</span></code> file generated outputs these properties, but in a text format.
+The <code class="docutils literal notranslate"><span class="pre">traj.trr</span></code> file is a binary that contains details of the simulation
+trajectory and <code class="docutils literal notranslate"><span class="pre">xtc</span></code> file is a compressed and portable format for trajectories.
+The final file produced by default is the <code class="docutils literal notranslate"><span class="pre">counfout.gro</span></code> is a
+text file containing the particle coordinates and velocities for the final
+step of the simulation.</p>
+<p>It is possible to add flags to <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> to alter some of the parameters that
+had been set in the molecular dynamics parameter file. For instance, the
+<code class="docutils literal notranslate"><span class="pre">-nsteps</span></code> flag can be used to override the number of timesteps that the
+simulation should run for. Also, there are a number of useful options for
+defining input files (and input file types), output files, and parameters
+related to the computational system on which you are running (such as the
+<code class="docutils literal notranslate"><span class="pre">-nt</span></code> option to set the number of MPI threads that the simulation should
+use). More information on these and other options can be found on the GROMACS
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-mdrun.html">gmx mdrun</a>
+page.</p>
+</section>
+</section>
+</section>
+<section id="post-processing-and-analysis-tools">
+<h2>Post-processing and analysis tools<a class="headerlink" href="#post-processing-and-analysis-tools" title="Permalink to this headline"></a></h2>
+<p>With the simulation complete, we can analyse the simulation trajectory and
+understand what the simulation has demonstrated. GROMACS offers a number of
+post-simulation analysis tools. In this section, we will discuss tools that
+can be used to: generate the thermodynamic properties of interest; obtain
+radial distribution functions and correlation functions;</p>
+<section id="thermodynamic-properties-of-the-system">
+<h3>Thermodynamic properties of the system<a class="headerlink" href="#thermodynamic-properties-of-the-system" title="Permalink to this headline"></a></h3>
+<p>The GROMACS <code class="docutils literal notranslate"><span class="pre">energy</span></code> tool can be used to extract energy components from an
+energy (<code class="docutils literal notranslate"><span class="pre">.edr</span></code>) file. By default, this tool will generate an XMGrace file.
+To use this, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx energy -f <span class="si">${</span><span class="nv">INPUT_ENERGY_FILE</span><span class="si">}</span>.edr -o <span class="si">${</span><span class="nv">OUTPUT_XMGRACE_FILE</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>When running this, you will get a prompt asking which property you would like
+output (<em>e.g.</em> potential energy, kinetic energy, pressure, temperature,
+<em>etc.</em>). Enter the correct number to generate an XMGrace file that, when
+plotted, will show you how that property varied over the simulation run.
+There are a number of other options for the <code class="docutils literal notranslate"><span class="pre">energy</span></code> command, and these
+can be found in the GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-energy.html#gmx-..energy">gmx energy</a>
+page.</p>
+</section>
+<section id="generating-an-index-file">
+<h3>Generating an index file<a class="headerlink" href="#generating-an-index-file" title="Permalink to this headline"></a></h3>
+<p>GROMACS has a post-analysis tool for generating radial distribution functions
+(RDFs). Before generating an RDF, we will need to create a GROMACS index
+(<code class="docutils literal notranslate"><span class="pre">.ndx</span></code>) file to categorise the various parts that compose the simulation
+into indexed groups. This can be done with the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">make_ndx</span></code> command. To
+use it, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx make_ndx -f <span class="si">${</span><span class="nv">INPUT</span><span class="si">}</span>.gro -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.ndx
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${INPUT}.gro</span></code> is a GROMACS configuration file for the trajectory you
+are wanting to calculate the RDF for. Provided you used the default names in
+your <code class="docutils literal notranslate"><span class="pre">mdrun</span></code>, you can simply use <code class="docutils literal notranslate"><span class="pre">confout.gro</span></code>. The <code class="docutils literal notranslate"><span class="pre">make_ndx</span></code> command
+will analyse the system, and output the default index groups. It is possible
+to create new index groups by using the command prompts listed (for instance,
+you can create a group composed of only the oxygens from the solvent waters by
+running <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">OW</span></code> within <code class="docutils literal notranslate"><span class="pre">make_ndx</span></code>). For more information, please see the
+GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-make_ndx.html">gmx make_ndx</a>
+page.</p>
+<p>For more complex manipulations than selecting all of one group of atoms,
+GROMACS provides the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">select</span></code> option. This will allow you to define
+the exact time or particles or regions of interest within your simulation.
+You can find more information on how to use this in the GROMACS manual
+<a class="reference external" href="https://manual.gromacs.org/documentation/2019/reference-manual/analysis/using-groups.html#selections">Groups and Selections</a>
+page.</p>
+</section>
+<section id="radial-distribution-function">
+<h3>Radial distribution function<a class="headerlink" href="#radial-distribution-function" title="Permalink to this headline"></a></h3>
+<p>Once an appropriate index file is generated, with the atoms for which an RDF
+is to be calculated indexed into appropriate groups, we can use the
+<code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">rdf</span></code> command to generate the RDFs. This is done by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx rdf -f <span class="si">${</span><span class="nv">TRAJECTORY_INPUT</span><span class="si">}</span>.trr -n <span class="si">${</span><span class="nv">INDEX_INPUT</span><span class="si">}</span>.ndx  <span class="se">\</span>
+        -ref <span class="si">${</span><span class="nv">REFERENCE_GROUP</span><span class="si">}</span> -sel <span class="si">${</span><span class="nv">SELECTED_GROUP</span><span class="si">}</span> -bin <span class="si">${</span><span class="nv">BIN_WIDTH</span><span class="si">}</span>
+        -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${TRAJECTORY_INPUT}.trr</span></code> is the trajectory file for which you would
+like to generate an RDF, and <code class="docutils literal notranslate"><span class="pre">${INDEX_INPUT}.ndx</span></code> is the index file that you
+produced using <code class="docutils literal notranslate"><span class="pre">make_ndx</span></code>. <code class="docutils literal notranslate"><span class="pre">${REFERENCE_GROUP}</span></code> should be replaced with
+the name of the principal group to be used in the RDF as it appears in the
+<code class="docutils literal notranslate"><span class="pre">${INDEX_INPUT}.ndx</span></code> file. Likewise, <code class="docutils literal notranslate"><span class="pre">${SELECTED_GROUP}</span></code> should be
+replaced with the name of the atom group(s) for which you want to calculate
+the RDF against the position of the reference group (<em>e.g.</em> if you want to
+calculate the RDF between sodium ions and chloride ions, your reference
+group would be one of <code class="docutils literal notranslate"><span class="pre">NA</span></code> or <code class="docutils literal notranslate"><span class="pre">CL</span></code>, and your selected group would be the
+one not chosen as reference). Note that it is possible for your reference and
+selected groups to be the same group.</p>
+</section>
+<section id="mean-squared-displacement-and-velocity-autocorrelation-functions">
+<h3>Mean squared displacement and velocity autocorrelation functions<a class="headerlink" href="#mean-squared-displacement-and-velocity-autocorrelation-functions" title="Permalink to this headline"></a></h3>
+<p>Gromacs offers a number of tools to calculate correlation and autocorrelation
+functions. Here, we will look at two specific example: the mean-squared
+displacement (MSD) and velocity autocorrelation function (VACF). We will focus
+on how to generate these functions within GROMACS but you can use these links
+to find an overview of the theory behind the
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/reference-manual/analysis/mean-square-displacement.html">MSD</a>
+and the
+<a class="reference external" href="http://manual.gromacs.org/documentation/2019/reference-manual/analysis/correlation-function.html">VACF</a>.</p>
+<p>Calculating the MSD of parts of a system can be done using the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">msd</span></code>.
+This can be run using:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx msd -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -s <span class="si">${</span><span class="nv">INPUT_TOPOLOGY</span><span class="si">}</span>.tpr -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${INPUT_TRAJECTORY}.trr</span></code> is the trajectory file of the simulation for
+which the MSD is being calculated, and <code class="docutils literal notranslate"><span class="pre">${INPUT_TOPOLOGY}.tpr</span></code> can be the
+input file used to obtain this trajectory (note that it is possible to use
+the final topology <code class="docutils literal notranslate"><span class="pre">confout.gro</span></code> file here instead to obtain the same
+results). Running this command will prompt you to choose the group for which
+you would like the MSD. Note that, if the group you are looking for is not
+present in the list, you can generate an index file (see
+<a class="reference internal" href="#generating-an-index-file">Generating an index file</a>) where you can define this new group. To include
+this index file, add the option <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">${INDEX_FILE}.ndx</span></code> to the command above.
+For more information and options, please look at the GROMACS manual page on
+the <a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-msd.html#gmx-msd">gmx msd command</a>.</p>
+<p>VACFs can be generated using the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">velacc</span></code> command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx velacc -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">${INPUT_TRAJECTORY}.trr</span></code> is the trajectory file of the simulation
+for which the VACF is being produced. You will get a prompt asking for which
+group of atoms the VACF should be calculated. If the group you want is not
+present, you may need to create it by following the instructions in the
+<a class="reference internal" href="#generating-an-index-file">Generating an index file</a> section of the manual. To include your index file,
+add it with the <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">${INPUT_INDEX}.ndx</span></code> option. You can find more options
+and information on the GROMACS manual
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/onlinehelp/gmx-velacc.html#gmx-velacc">gmx velacc</a> page.</p>
+</section>
+<section id="calculating-distances">
+<h3>Calculating distances<a class="headerlink" href="#calculating-distances" title="Permalink to this headline"></a></h3>
+<p>Interparticle distances, that is the distance between two particles in a simulation
+trajectory, can be calculated using the <a class="reference external" href="https://manual.gromacs.org/documentation/current/onlinehelp/gmx-distance.html">gmx distance</a> comand</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx distance -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -select &lt;selection&gt; -oall <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">${INPUT_TRAJECTORY}.trr</span></code> is the trajectory file of the simulation for
+which the distances are being calculated. <code class="docutils literal notranslate"><span class="pre">&lt;selection&gt;</span></code> is where you specify
+a list of pairs of particles to calculate the distance between. More information
+on selections can be found in the gromacs manual <a class="reference external" href="https://manual.gromacs.org/documentation/current/onlinehelp/selections.html">selections</a> page.
+As an example to calculate the distance between the i-th and j-th atom you could use the selection:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx distance -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -select <span class="s2">&quot;atomnr i j&quot;</span> -oall <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">i</span></code> and <code class="docutils literal notranslate"><span class="pre">j</span></code> are the atom numbers. <code class="docutils literal notranslate"><span class="pre">${OUTPUT}.xvg</span></code> will contain a timeseries
+of the distance between pair <code class="docutils literal notranslate"><span class="pre">i</span></code> and <code class="docutils literal notranslate"><span class="pre">j</span></code>.</p>
+<p>More than one pair of atoms can be specified, e.g</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx distance -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -select <span class="s2">&quot;atomnr i j k l&quot;</span> -oall <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">${OUTPUT}.xvg</span></code> will contain a timeseries of the distance between atoms <code class="docutils literal notranslate"><span class="pre">i</span></code> and <code class="docutils literal notranslate"><span class="pre">j</span></code>, and
+the distance between atoms <code class="docutils literal notranslate"><span class="pre">k</span></code> and <code class="docutils literal notranslate"><span class="pre">l</span></code>. The options <code class="docutils literal notranslate"><span class="pre">-oav</span></code> and <code class="docutils literal notranslate"><span class="pre">-oh</span></code> can be used to produce
+a timeseries of the average distance for all selected pairs or a histogram respectively.</p>
+<p>A similar tool is <a class="reference external" href="https://manual.gromacs.org/documentation/current/onlinehelp/gmx-mindist.html">gmx mindist</a> which computes
+the minimum distance between two groups.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx mindist -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr  -n <span class="si">${</span><span class="nv">INDEX_INPUT</span><span class="si">}</span>.ndx  -od <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.vxg
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">${INPUT_TRAJECTORY}.trr</span></code> is the trajectory file of the simulation for
+which the distances are being calculated and <code class="docutils literal notranslate"><span class="pre">${INDEX_INPUT}.ndx</span></code> is the index file that you
+produced using <code class="docutils literal notranslate"><span class="pre">make_ndx</span></code>. You will get a prompt asking for which group you would like to select. You will need to
+select two groups. It will then print out a timeseries of the minimum distance between the two groups to the specified output file.</p>
+<p>Additional commonly used options are the <code class="docutils literal notranslate"><span class="pre">-max</span></code> flag which compute the maxiumum distance instead of the minimum. And the <code class="docutils literal notranslate"><span class="pre">-pi</span></code> option
+which calulate the minimum distance of a group to its peridic image. For this you only specify one group in the prompt and you will need to provide
+the topology file <code class="docutils literal notranslate"><span class="pre">-s</span> <span class="pre">${INPUT_TOPOLOGY}.tpr</span></code>.</p>
+<p>The third distance tool is <a class="reference external" href="https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pairdist.html">gmx pairdist</a> which calculates pairwise
+distance between one reference slection and one or more other selections.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx pairdist -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -ref &lt;reference selection&gt; -sel &lt;other selection&gt; -o <span class="si">${</span><span class="nv">OUTPUT</span><span class="si">}</span>.xvg
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">${INPUT_TRAJECTORY}.trr</span></code> is the trajectory file of the simulation for
+which the distances are being calculated, <cite>&lt;refernece selection&gt;</cite> are the reference positions to calculate distances from, and <cite>&lt;other selection&gt;</cite> are
+the positions to calculate distances for. More information
+on selections can be found in the gromacs manual <a class="reference external" href="https://manual.gromacs.org/documentation/current/onlinehelp/selections.html">selections</a> page.
+An example the following command will compute the minimum distance at each timestep between the carbon atoms and the nitrogen atoms.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>gmx pairdist -f <span class="si">${</span><span class="nv">INPUT_TRAJECTORY</span><span class="si">}</span>.trr -ref <span class="s2">&quot;atomname C&quot;</span> -sel <span class="s2">&quot;atomname N&quot;</span>
+</pre></div>
+</div>
+<p>By default the result is grouped over all atoms in the selection so one number (the minimum distance between the groups) is returned for each timestep in the trajectory. Additional options to the command can give the full list of pairwise distances, see <a class="reference external" href="https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pairdist.html">gmx pairdist</a> .</p>
+</section>
+</section>
+<section id="further-resources">
+<h2>Further resources<a class="headerlink" href="#further-resources" title="Permalink to this headline"></a></h2>
+<p>There are a number of excellent GROMACS tutorials that name a number of
+commands not mentioned here. The following tutorials are highly recommended:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference external" href="http://tutorials.gromacs.org">GROMACS tutorial by GROMACS team</a></p></li>
+<li><p><a class="reference external" href="http://www.mdtutorials.com/gmx/">GROMACS Tutorial by Justin A. Lemkhul</a></p></li>
+<li><p><a class="reference external" href="https://www.svedruziclab.com/tutorials/gromacs/">GROMACS Tutorial by Wes Barnett</a></p></li>
+</ul>
+</div></blockquote>
+<p>Furthermore, the
+<a class="reference external" href="http://manual.gromacs.org/documentation/current/how-to/index.html">GROMACS How-To guides</a>
+provide a lot of information as well.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Suggested workflow for GROMACS simulations</a><ul>
+<li><a class="reference internal" href="#preparing-the-system">Preparing the system</a><ul>
+<li><a class="reference internal" href="#pdb2gmx">PDB2GMX</a><ul>
+<li><a class="reference internal" href="#generating-your-own-forcefield-file">Generating your own forcefield file</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#preparing-and-solvating-your-simulation-box">Preparing and solvating your simulation box</a><ul>
+<li><a class="reference internal" href="#generating-a-system-of-replicates-from-a-gromacs-structure-file">Generating a system of replicates from a GROMACS structure file</a></li>
+<li><a class="reference internal" href="#generating-a-simulation-box">Generating a simulation box</a></li>
+<li><a class="reference internal" href="#solvating-a-system">Solvating a system</a></li>
+<li><a class="reference internal" href="#adding-ions-and-creating-a-charge-neutral-system">Adding ions and creating a charge-neutral system</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#running-a-simulation">Running a simulation</a><ul>
+<li><a class="reference internal" href="#creating-a-run-parameter-file">Creating a run parameter file</a><ul>
+<li><a class="reference internal" href="#example-molecular-dynamics-parameter-file">Example molecular dynamics parameter file</a></li>
+<li><a class="reference internal" href="#generating-your-simulation-input-file">Generating your simulation input file</a></li>
+<li><a class="reference internal" href="#running-your-simulation">Running your simulation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#post-processing-and-analysis-tools">Post-processing and analysis tools</a><ul>
+<li><a class="reference internal" href="#thermodynamic-properties-of-the-system">Thermodynamic properties of the system</a></li>
+<li><a class="reference internal" href="#generating-an-index-file">Generating an index file</a></li>
+<li><a class="reference internal" href="#radial-distribution-function">Radial distribution function</a></li>
+<li><a class="reference internal" href="#mean-squared-displacement-and-velocity-autocorrelation-functions">Mean squared displacement and velocity autocorrelation functions</a></li>
+<li><a class="reference internal" href="#calculating-distances">Calculating distances</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#further-resources">Further resources</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../index.html"
+                          title="previous chapter">GROMACS Best Practice Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="../cookbook/cookbook.html"
+                          title="next chapter">Performance Cookbook</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/workflow/workflow.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../cookbook/cookbook.html" title="Performance Cookbook"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="GROMACS Best Practice Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">GROMACS Best Practice Guide  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Suggested workflow for GROMACS simulations</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    </div>
+  </body>
+</html>

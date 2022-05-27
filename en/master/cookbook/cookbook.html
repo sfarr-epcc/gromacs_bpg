@@ -1,0 +1,1269 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Performance Cookbook &#8212; GROMACS Best Practice Guide  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Suggested workflow for GROMACS simulations" href="../workflow/workflow.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../workflow/workflow.html" title="Suggested workflow for GROMACS simulations"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">GROMACS Best Practice Guide  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Performance Cookbook</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="performance-cookbook">
+<h1>Performance Cookbook<a class="headerlink" href="#performance-cookbook" title="Permalink to this headline"></a></h1>
+<p>The performance cookbook part of the GROMACS best practice guide
+assumes your simulations are prepared appropriately and provides
+concrete guidance on how best to run GROMACS simulations, i.e. execute
+<code class="docutils literal notranslate"><span class="pre">mdrun</span></code>, so as to make good use of available hardware and obtain
+results in the shortest time possible, be it on a laptop, a multi-GPU
+desktop workstation, a departmental cluster, and especially on large
+supercomputers. This complements and provides a bridge into navigating
+the detailed information provided in the “getting good performance
+from mdrun” page in the GROMACS manual:</p>
+<p><a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html">http://manual.gromacs.org/current/user-guide/mdrun-performance.html</a></p>
+<p>GROMACS can generally be launched without specifying anything other
+than the essential simulation parameters, as it has built-in
+heuristics that enable it to detect the underlying hardware and use
+accumulated insights about good performance embedded in the code to
+make usually reasonable choices given the available number and types
+of CPU cores and/or GPUs. By default GROMACS also adapts dynamically
+during execution to improve performance. However for any given
+simulation it is possible that better than default choices
+exist. Understanding how to control these by explicitly specifying
+parallel execution options and how best to approach obtaining optimal
+use of available hardware can make a significant difference to
+throughput and hence scientific results achieved over a given
+timespan, as well as to financial (cost) and environmental (energy
+usage) efficiency. For using high-performance computing resources
+there is additionally clear value in knowing what scale of resources
+(number of cores / nodes / GPUs) are efficient to use, or how to go
+about finding this out.</p>
+<p>As well as general guidance applicable to whatever machine you may be
+running GROMACS on, the performance cookbook provides concrete
+examples showing how to obtain good performance on a number of
+specific PRACE and EuroHPC machines, both as an
+illustration of the application of general best practice process for
+obtaining good performance, and to promote efficient usage of the
+named machines. The cookbook also provides a reference set of (near)
+optimal benchmark performance results obtained on these machines using
+best practice in order to aid estimation of required compute time
+allocations for researchers requesting such time.</p>
+<section id="general-guidance-on-running-mdrun-and-strategy-for-getting-good-performance">
+<h2>General guidance on running <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> and strategy for getting good performance<a class="headerlink" href="#general-guidance-on-running-mdrun-and-strategy-for-getting-good-performance" title="Permalink to this headline"></a></h2>
+<section id="single-node">
+<h3>Single node<a class="headerlink" href="#single-node" title="Permalink to this headline"></a></h3>
+<p>When using GROMACS on a single node, that is to say a machine such as
+a laptop, desktop workstation, or server, where all processor cores or
+GPUs have access to a single shared memory, we typically run the
+thread-mpi version of mdrun (<code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">mdrun</span></code>).</p>
+<p><strong>CPU only</strong></p>
+<p>Running GROMACS with the default of one thread-mpi rank per core on a
+single-node CPU-only machine is often optimal, however one can
+experiment with different combinations of numbers of thread-MPI ranks
+(controlled by varying <code class="docutils literal notranslate"><span class="pre">-ntmpi</span> <span class="pre">N</span></code>) and numbers of OpenMP threads per
+rank (controlled by varying <code class="docutils literal notranslate"><span class="pre">-ntomp</span> <span class="pre">M</span></code> and setting the environment
+variable <code class="docutils literal notranslate"><span class="pre">OMP_NUM_THREADS=M</span></code>), such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">N</span></code> is equal to the
+total number of CPU cores available on the node. Many processors
+support simultaneous multithreading (SMT), known as hyperthreading on
+Intel processors, whereby each physical core can efficiently execute
+multiple threads or processes. Enabling multithreading may boost
+performance. To make use of SMT, <code class="docutils literal notranslate"><span class="pre">-ntmpi</span> <span class="pre">N</span></code> and <code class="docutils literal notranslate"><span class="pre">-ntomp</span> <span class="pre">M</span></code> should
+be chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">N</span></code> equals the number of logical cores
+identified by the operating systems, which is equal to the number of
+physical processor cores multiplied by the number of simultaneous
+multithreads supported by each physical core.</p>
+<p>If executing on more than at least 12 ranks GROMACS by default
+dedicates a certain fraction of the ranks to PME calculations.  The
+number of PME ranks is based on various heuristics that reflect what
+the developers expect to be optimal based on the underlying algorithms
+and what has often been found to give good performance. During
+execution GROMACS attempts to reduce the load imbalance between PP and
+PME ranks, unless this functionality is disabled by choosing
+<code class="docutils literal notranslate"><span class="pre">-tunepme</span> <span class="pre">no</span></code>.  Even when enabled however, this dynamic PME tuning
+does not change the number of PME ranks from what GROMACS decides
+according to its built-in heuristics. It is possible to explicitly
+specify the number of PME ranks to use with the <code class="docutils literal notranslate"><span class="pre">-npme</span></code> option. You
+should examine the md.log file produced and check if there is any
+warning suggesting to try use a larger or smaller number of PME ranks
+for your simulation. A more systematic way to determine a
+performance-optimal number of PME ranks for a given total number of
+ranks can be determined using the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">tune_pme</span></code> tool as described
+in <a class="reference external" href="http://manual.gromacs.org/current/onlinehelp/gmx-tune_pme.html#gmx-tune-pme">gmx tune_pme</a></p>
+<p>For details, see <a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-within-a-single-node">Running mdrun within a single node</a>
+and <a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#process-or-level-parallelization-via-openmp">Process(-or) level parallelization via OpenMP</a></p>
+<p><strong>CPU + GPU</strong></p>
+<p>By default GROMACS launches one thread-mpi rank per GPU. It is worth
+experimenting running with more thread-mpi ranks, up to one rank per
+CPU core. Whatever the number of ranks, choose <code class="docutils literal notranslate"><span class="pre">-ntomp</span></code> to ensure
+all available CPU cores are used, and apply similar considerations to
+adjust <code class="docutils literal notranslate"><span class="pre">-ntomp</span></code> for hyperthreading/SMT-capable processors as
+described above for CPU-only execution.</p>
+<p><strong>GPU offload options</strong></p>
+<p>By default GROMACS offloads short-range non-bonded force calculations
+(<code class="docutils literal notranslate"><span class="pre">-nb</span> <span class="pre">gpu</span></code>), PME calculations (<code class="docutils literal notranslate"><span class="pre">-pme</span> <span class="pre">gpu</span></code>) and, on NVIDIA GPUs,
+bonded force calculations (<code class="docutils literal notranslate"><span class="pre">-bonded</span> <span class="pre">gpu</span></code>).  For GROMACS 2022
+PME offload to GPU can only be done by a single rank (i.e. a single
+GPU). PME offload is also subject to a number of further <a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#known-limitations">known
+limitations</a>.</p>
+<p>It is worth experimenting with offload options taking into account the
+<a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#performance-considerations-for-gpu-tasks">performance considerations for GPU tasks</a>
+and considering your hardware, in particular the number and respective
+age and computational power of your processor(s) and your GPU(s). For
+example, FFTs are offloaded by default if PME is offloaded (which also
+happens by default), but this can be avoided with <code class="docutils literal notranslate"><span class="pre">-pmefft</span> <span class="pre">cpu</span></code> and
+may be beneficial for an older GPU sitting alongside newer CPU.</p>
+<p>Constraint calculations and coordinate updates default to CPU but can
+be offloaded with <code class="docutils literal notranslate"><span class="pre">-update</span> <span class="pre">gpu</span></code>, though only to NVIDIA GPUs, only if
+GROMACS is executes on a single rank, and ( or GROMACS 2020)
+subject to further limitations (no free-energy, no virtual sites, no
+Ewald surface correction, no replica exchange, no constraint pulling,
+no orientation restraints and no computational electrophysiology).</p>
+<p>For details, see <a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-within-a-single-node">Running mdrun within a single node</a>,
+<a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#node-level-parallelization-via-gpu-offloading-and-thread-mpi">Node level parallelization via GPU offloading and thread-MPI</a>,
+and <a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-with-gpus">Running mdrun with GPUs</a></p>
+</section>
+<section id="multiple-networked-compute-nodes-in-a-cluster-or-supercomputer">
+<h3>Multiple networked compute nodes in a cluster or supercomputer<a class="headerlink" href="#multiple-networked-compute-nodes-in-a-cluster-or-supercomputer" title="Permalink to this headline"></a></h3>
+<p>In order to run GROMACS on a multi-node distributed-memory machine
+such as a supercomputer we need to run the MPI-enabled version using
+<code class="docutils literal notranslate"><span class="pre">gmx_mpi</span> <span class="pre">mdrun</span></code> (or simply <code class="docutils literal notranslate"><span class="pre">mdrun_mpi</span></code>), rather than <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">mdrun</span></code>
+(or simply <code class="docutils literal notranslate"><span class="pre">mdrun</span></code>). In addition, GROMACS should be launched with a
+parallel application launcher (<code class="docutils literal notranslate"><span class="pre">mpirun</span></code>, <code class="docutils literal notranslate"><span class="pre">mpiexec</span></code>, <code class="docutils literal notranslate"><span class="pre">srun</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">aprun</span></code>), which sets the number of MPI ranks <code class="docutils literal notranslate"><span class="pre">N</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mpirun</span> <span class="o">-</span><span class="n">np</span> <span class="n">N</span> <span class="n">gmx_mpi</span> <span class="n">mdrun</span> <span class="o">&lt;</span><span class="n">mdrun</span> <span class="n">options</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>CPU only</strong></p>
+<p>As for single-node simulations, running with 1 rank per core and 1
+OpenMP thread per rank and therefore with as many MPI ranks per node
+as there are cores on each node is often optimal. It is however worth
+experimenting with multiple OpenMP threads per rank, especially as
+this often helps retain higher performance when scaling to more nodes.</p>
+<p>Runs using multiple nodes are very likely to cause GROMACS to
+automatically spawn dedicated PME ranks, for which you are advised to
+follow the guidance already given above for the single node case. You
+should be aware that if the number of PP ranks resulting from the
+combined choice of total number of MPI ranks and number of PME ranks
+has a largest prime divisor that GROMACS considers too large to give
+good performance for the domain decomposition, it will throw a fatal
+error and abort execution. In these cases it may be worth adjusting
+the total number of ranks and/or the number of PME ranks to obtain
+better performance, using OpenMP threading where necessary to ensure
+all cores on each node are utilised, though it’s not inconceivable
+that overall performance may be larger with an optimal choice of
+number of PME ranks even if this leaves a small number of cores on
+each node unused. As explained for the single-node case,
+performance-optimal number of PME ranks for a given total number of
+ranks can be determined in a systematic way using the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">tune_pme</span></code>
+tool as described in <a class="reference external" href="http://manual.gromacs.org/current/onlinehelp/gmx-tune_pme.html#gmx-tune-pme">gmx tune_pme</a></p>
+<p>The OpenMP threading for PME ranks can be chosen to be different than
+for standard (i.e. PP) ranks using the <code class="docutils literal notranslate"><span class="pre">-ntomp_pme</span></code> option,
+providing added flexibility to help utilise all cores on each node.</p>
+<p><strong>CPU + GPU</strong></p>
+<p>Broadly the same considerations as for single-node use apply with
+regards to determining an optimal choice of number of MPI ranks x
+OpenMP threads and GPU offloading options.</p>
+<p>Offloading PME calculations to GPU can only
+take place on a single rank using a single GPU (GROMACS 2022). The performance
+advantage this typically gives over CPU-based PME computation on a
+single or small number of nodes can therefore start to diminish when
+running on larger numbers of nodes thanks to the growing compute power
+of an increasing number of PME ranks running on CPU cores. One
+therefore expects a crossover point beyond which it is faster on a
+given number of nodes to run multiple dedicated PME ranks - e.g. a
+number chosen optimally using <code class="docutils literal notranslate"><span class="pre">`tune_pme`</span></code> - on CPU cores, instead
+of offloading all PME calculations to a single GPU. The node count at
+which this occurs will depend on factors such as the system size,
+chosen MD parameters, and the relative performance of GPUs and CPUs
+available in a machine.</p>
+</section>
+</section>
+<section id="general-guidance-for-benchmarking">
+<h2>General guidance for benchmarking<a class="headerlink" href="#general-guidance-for-benchmarking" title="Permalink to this headline"></a></h2>
+<p>Before beginning expensive <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> simulations you should benchmark your
+system to ensure you are using the optimal amount of HPC resources.
+Usually this mean how many nodes/CPUs/GPUs you choose to use.</p>
+<p>To do this you should take your system, run it for a short time (10,00 steps
+should be sufficient) and increase the number of CPUs. You then look at the
+performance figure in ns/day. It is helpful to plot a graph of CPU count vs
+performance. Examples of these are shown in the following section for different
+PRACE/EuroHPC machines.</p>
+<p>You will see that for increasing CPU count you get diminishing returns on
+performance gains. It is up to you to choose a core count that balances
+the time you have to wait for the simulation to finish, and the cost of running
+the simulations. Often the appropriate number is the point on the performance
+curve before it starts to plateau.</p>
+<p>Some mdrun flags that can help with benchmarking are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-dlb</span> <span class="pre">yes</span></code>  turns on dynamic load balancing which shifts particles between MPI ranks to optimize performance. This can interfere with the tunepme setting which will optimize various aspects of the PME and DD algorithms, shifting load between ranks.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-notunepme</span></code> turns off PME load balancing because it can interfere with the <code class="docutils literal notranslate"><span class="pre">dlb</span> <span class="pre">yes</span></code> setting. The PME settings can be tuned separately using <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">tune_pme</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-noconfout</span></code> does not create the output conformation as this is not needed for benchmarking.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-resethway</span></code> resets the performance timers halfway through the run, this removes the overhead of initialization and load balancing from the reported timings.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-nsteps</span> <span class="pre">10000</span></code> forces mdrun to run for only 10000 steps, this lets you run short benchmarks using your production ready tpr file.</p></li>
+</ul>
+<p>Things to investigate:</p>
+<ul class="simple">
+<li><p>Some systems will have different versions of GROMACS built by different compilers, these often have
+differing performance.</p></li>
+<li><p>Some systems will have the ability to turn on Simultaneous Multi-Threading (SMT), it may provide a performance boost for GROMACS.</p></li>
+<li><p>For large systems using many nodes then the use of Hybrid OpenMP/MPI cat offer increased performance over pure MPI.</p></li>
+</ul>
+<p>GPU specific notes:</p>
+<ul class="simple">
+<li><p>For GPU systems you can try different GPU offload scenarios.</p></li>
+<li><p>For GPU systems it is generally best to have 1 MPI rank or 1 thread-MPI rank per GPU, but this may not always be the case.</p></li>
+<li><p>For GPU systems the parallel efficiency beyond 1 GPU is often poor, you will not see the same strong scaling as on CPU only systems. However the performance on 1 GPU should be greater than on an equivalent CPU node.</p></li>
+</ul>
+</section>
+<section id="getting-good-gromacs-performance-on-prace-eurohpc-machines">
+<h2>Getting good GROMACS performance on PRACE/EuroHPC machines<a class="headerlink" href="#getting-good-gromacs-performance-on-prace-eurohpc-machines" title="Permalink to this headline"></a></h2>
+<p>This section provides guidance and concrete recipes showing how to
+build and run GROMACS for good performance on some of the largest
+EU-based supercomputers available to EU researchers through PRACE and EuroHPC.</p>
+<p>General guidance for each machine is complemented by an analysis
+illustrating the effect of key runtime execution choices on <code class="docutils literal notranslate"><span class="pre">mdrun</span></code>
+performance for a range of benchmark simulations. Comparison between
+these and your own simulations should help you determine how best to
+run your own simulations on these machines and how to obtain good
+performance.</p>
+<section id="benchmarks">
+<h3>Benchmarks<a class="headerlink" href="#benchmarks" title="Permalink to this headline"></a></h3>
+<p>A brief description is provided below of the benchmarks used to
+illustrate how to obtain good performance on PRACE/EuroHPC machines
+for a range of system sizes and types.</p>
+<p>Benchmarks prefixed with “bench” are available from the Dept. of
+Theoretical and Computational Biophysics at the MPI for biophysical
+Chemistry, Göttingen: <a class="reference external" href="https://www.mpibpc.mpg.de/grubmueller/bench">https://www.mpibpc.mpg.de/grubmueller/bench</a></p>
+<p>Benchmarks suffixed with “_HBS” are available from the UK’s HECBioSim
+consortium of computational biomolecular researchers:
+<a class="reference external" href="https://www.hecbiosim.ac.uk/benchmarks">https://www.hecbiosim.ac.uk/benchmarks</a></p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><strong>20k_HBS</strong>:</dt><dd><ul>
+<li><p>3NIR Crambin</p></li>
+<li><p>Total number of atoms: 19,605</p></li>
+<li><p>Protein atoms: 642</p></li>
+<li><p>Water atoms: 18,963</p></li>
+<li><p>Input parameters: <a class="reference internal" href="benchmarks/20k_HBS.html"><span class="doc">20k_HBS.mdp</span></a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>benchMEM</strong>:</dt><dd><ul>
+<li><p>Protein in membrane, surrounded by water</p></li>
+<li><p>Total number of atoms: 82k</p></li>
+<li><p>Input parameters: <a class="reference internal" href="benchmarks/benchMEM.html"><span class="doc">benchMEM.mdp</span></a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>465k_HBS</strong>:</dt><dd><ul>
+<li><p>hEGFR Dimer of 1IVO and 1NQL</p></li>
+<li><p>Total number of atoms: 465,399</p></li>
+<li><p>Protein atoms: 21,749</p></li>
+<li><p>Lipid atoms: 134,268</p></li>
+<li><p>Water atoms: 309,087</p></li>
+<li><p>Ions: 295</p></li>
+<li><p>Input parameters: <a class="reference internal" href="benchmarks/465k_HBS.html"><span class="doc">465k_HBS.mdp</span></a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>benchRIB</strong>:</dt><dd><ul>
+<li><p>Ribosome in water</p></li>
+<li><p>Total number of atoms: 2M</p></li>
+<li><p>Input parameters: <a class="reference internal" href="benchmarks/benchRIB.html"><span class="doc">benchRIB.mdp</span></a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><strong>benchPEP</strong>:</dt><dd><ul>
+<li><p>Peptides in water</p></li>
+<li><p>Total number of atoms: 12M</p></li>
+<li><p>Input parameters: <a class="reference internal" href="benchmarks/benchPEP.html"><span class="doc">benchPEP.mdp</span></a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="gromacs-performance-on-hawk-hlrs-germany">
+<h3>GROMACS performance on HAWK (HLRS, Germany)<a class="headerlink" href="#gromacs-performance-on-hawk-hlrs-germany" title="Permalink to this headline"></a></h3>
+<p><a class="reference external" href="https://www.hlrs.de/systems/hpe-apollo-hawk/">https://www.hlrs.de/systems/hpe-apollo-hawk/</a></p>
+<p>HAWK is listed as number 16 on the Top500 (November 2020),
+the 6th largest European HPC system, and is accessible through PRACE
+access mechanisms.</p>
+<p><strong>Hardware</strong></p>
+<p>Each node has:</p>
+<ul class="simple">
+<li><p>Processors: 2 x 64-core AMD EPYC 7742 &#64;2.25</p></li>
+<li><p>Memory: 256GB RAM</p></li>
+<li><p>Interconnect: InfiniBand HDR200</p></li>
+</ul>
+<p><strong>Software</strong></p>
+<p>Relevant software stack on system (available to all users via environment modules):</p>
+<ul class="simple">
+<li><p>HPE MPT and OpenMPI MPI libraries</p></li>
+<li><p>FFTW (Zen2 architecture-specific build)</p></li>
+</ul>
+<p><strong>Build</strong></p>
+<p>A multinode-capable MPI-enabled version of GROMACS with good performance on HAWK can be built as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>module load fftw
+
+cd gromacs-2020.2
+mkdir build
+cd build
+
+cmake .. -DCMAKE_INSTALL_PREFIX=${HOME}/gromacs/2020.2 -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx \
+         -DGMX_MPI=on -DGMX_SIMD=AVX2_256 -DGMX_GPU=off -DGMX_BUILD_SHARED_EXE=off -DBUILD_SHARED_LIBS=off \
+         -DGMX_FFT_LIBRARY=fftw3 -DCMAKE_PREFIX_PATH=${FFTW_ROOT}
+
+make -j 64
+make install
+</pre></div>
+</div>
+<p><strong>Run</strong></p>
+<p>The example job script below shows how to run GROMACS on HAWK for 1 hour on 8 nodes with 128 MPI ranks per node and 2 OpenMP threads per rank. Each physical core on the two 64-core AMD EPYC processors on HAWK supports two simultaneous multithreads (SMTs) - two logical cores - providing a total of 256 usable logical cores per node. The example launches a total of 256 threads across 128 ranks, implying that we intend to make use of all logical cores. The <code class="docutils literal notranslate"><span class="pre">omplace</span> <span class="pre">-ht</span> <span class="pre">compact</span></code> option should be used when running GROMACS using simultaneous multithreading as it ensures similarly numbered MPI ranks as well as OpenMP threads belonging to the same MPI rank are executed as close together in the processor’s and indeed the node’s memory hierarchy as possible - in the example, both OpenMP threads run on the same physical core. Not using the compact omplace option was found to be more likely to lead to lower performance when using SMT.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash -l
+#PBS -N benchRIB
+#PBS -l select=8:mpiprocs=128:ompthreads=2
+#PBS -l walltime=01:00:00
+
+# Change to the directory that the job was submitted from
+cd $PBS_O_WORKDIR
+
+export OMP_NUM_THREADS=1
+
+mpirun -np 1024 omplace -nt $OMP_NUM_THREADS -ht compact gmx_mpi mdrun -s benchRIB.tpr -ntomp $OMP_NUM_THREADS
+</pre></div>
+</div>
+<p><strong>MPI x OpenMP hybrid parallel execution and simultaneous multithreading</strong></p>
+<p>In order to better understand how GROMACS utilises the available
+hardware on HAWK and how to get good performance we can examine the
+effect on benchmark performance of the choice of the number of MPI
+ranks per node and OpenMP thread and use of SMT for a given number of
+HAWK nodes. Doing this systematically is facilitated in the first
+instance by disabling dynamic load balancing (<code class="docutils literal notranslate"><span class="pre">-dlb</span> <span class="pre">no</span></code>) and PME
+tuning (<code class="docutils literal notranslate"><span class="pre">-tunepme</span> <span class="pre">no</span></code>), which also allows us to illustrate the
+strength of load imbalance in different execution scenarios.</p>
+<p>The figures below show benchmark performance for GROMACS 2020.2 scales
+with increasing node count on HAWK for different combinations of MPI
+ranks and OpenMP threads per rank. Results using simultaneous
+multithreading (SMT) are not shown as these follow similar trends but
+broadly speaking yield slightly lower performance on HAWK for the
+benchmarks examined, even with compact placement assigned using
+<code class="docutils literal notranslate"><span class="pre">omplace</span></code>.</p>
+<p>It is clear there is a very significant effect on performance of the
+choice of MPI x OpenMP hybrid decomposition. As a general rule on HAWK
+performance is better for fewer (typically 1, 2 or 4) OpenMP threads
+per MPI rank, and hence more MPI ranks per node. Using more than 1
+(but no more than 4) OpenMP threads per rank may enable better
+performance to be achieved especially on larger number of
+nodes. OpenMP multithreading also allow runs on larger numbers of
+nodes to run without requiring care to avoid the fatal abortive error
+that results from a number of PP ranks that has too large a prime
+factor as largest divisor, simply by reducing the total number of MPI
+ranks.</p>
+<table class="docutils align-center">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><figure class="align-default" id="id3">
+<img alt="../_images/20k_HBS.svg" src="../_images/20k_HBS.svg" /><figcaption>
+<p><span class="caption-text"><strong>20k_HBS</strong></span><a class="headerlink" href="#id3" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id4">
+<img alt="../_images/benchMEM.svg" src="../_images/benchMEM.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchMEM</strong></span><a class="headerlink" href="#id4" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-even"><td><figure class="align-default" id="id5">
+<img alt="../_images/465k_HBS.svg" src="../_images/465k_HBS.svg" /><figcaption>
+<p><span class="caption-text"><strong>465k_HBS</strong></span><a class="headerlink" href="#id5" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id6">
+<img alt="../_images/benchRIB.svg" src="../_images/benchRIB.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchRIB</strong></span><a class="headerlink" href="#id6" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-odd"><td><figure class="align-default" id="id7">
+<img alt="../_images/benchPEP.svg" src="../_images/benchPEP.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchPEP</strong></span><a class="headerlink" href="#id7" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tuning the number of PME ranks</strong></p>
+<p>As <a class="reference external" href="http://manual.gromacs.org/current/user-guide/mdrun-performance.html#running-mdrun-on-more-than-one-node">mentioned in the manual</a>
+the domain decomposition (DD) load balancing functionality, which is
+enabled by default and disabled with <code class="docutils literal notranslate"><span class="pre">-dlb</span> <span class="pre">no</span></code>, is important for
+achieving good performance for spatially heterogeneous
+systems. However PME and DD load balancing can interfere with each
+other. To improve on the unbalanced performance shown in above
+benchmark figures therefore, a systematic approach can be taken by
+separately tuning the number of PME for a given total number of ranks
+using the <code class="docutils literal notranslate"><span class="pre">gmx</span> <span class="pre">tune_pme</span></code> tool as described in <a class="reference external" href="http://manual.gromacs.org/current/onlinehelp/gmx-tune_pme.html#gmx-tune-pme">the section on
+tune_pme</a>
+in the manual.</p>
+<p>On HAWK, we could tune the number of PME ranks to improve the
+performance of, for example, the benchRIB benchmark running on 16
+nodes with 32 MPI ranks per node (512 ranks in total) and 4 OpenMP
+threads per rank, which we saw in the above results is already a good
+choice considering unbalanced performance and which has scope to
+improve significantly through reduction of observed load imbalance.
+The following script allows one to run <code class="docutils literal notranslate"><span class="pre">tune_pme</span></code> on HAWK to do this
+and thereby determine an optimal choice for <code class="docutils literal notranslate"><span class="pre">-npme</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash -l
+#PBS -N tunepme
+#PBS -l select=16:mpiprocs=32:ompthreads=4
+#PBS -l walltime=01:00:00
+
+# Change to the directory that the job was submitted from
+cd $PBS_O_WORKDIR
+
+export OMP_NUM_THREADS=4
+
+export PATH=$HOME/gromacs/2020.2/mpi/AVX2_256/bin:$PATH
+
+gmx_mpi tune_pme -np 512 -mdrun &quot;omplace -nt ${OMP_NUM_THREADS} gmx_mpi mdrun&quot; -s benchRIB.tpr -ntomp $OMP_NUM_THREADS -dlb no
+</pre></div>
+</div>
+</section>
+<section id="gromacs-performance-on-discoverer-petasc-bulgaria">
+<h3>GROMACS performance on Discoverer (PetaSC Bulgaria)<a class="headerlink" href="#gromacs-performance-on-discoverer-petasc-bulgaria" title="Permalink to this headline"></a></h3>
+<p><a class="reference external" href="https://sofiatech.bg/en/petascale-supercomputer/">https://sofiatech.bg/en/petascale-supercomputer/</a></p>
+<p><strong>Hardware</strong></p>
+<dl class="simple">
+<dt>Each node has:</dt><dd><ul class="simple">
+<li><p>Processors: 2 x 64-core AMD EPYC 7H12 &#64; 2.6GHz</p></li>
+<li><p>Memory: 256 GB RAM</p></li>
+<li><p>Interconnect: Infiniband HDR</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Software</strong></p>
+<dl class="simple">
+<dt>Relevant software stack on system (available to all users via environment modules):</dt><dd><ul class="simple">
+<li><p>GCC, AOCC, and Intel oneAPI compilers</p></li>
+<li><p>MPICH, OpenMPI and Intel MPI libraries</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Build</strong></p>
+<p>A multinode-capable MPI-enabled version of GROMACS using OpenMPI and GCC with good performance on Discoverer can be built as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash
+
+# download the source code
+wget https://ftp.gromacs.org/gromacs/gromacs-2021.4.tar.gz
+
+# extract
+tar xvf gromacs-2021.4.tar.gz
+
+# move into the source code directory
+cd gromacs-2021.4
+
+# make the build directory
+mkdir build
+cd build
+
+# load the required modules
+module purge
+module load cmake
+module load fftw/3/3.3.10-gcc-openmpi
+module load openmpi/4/gcc/latest
+module load openblas/latest-gcc
+
+# cmake configuration
+cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/.. -DGMX_MPI=ON -DGMX_OPENMP=ON \
+    -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx \
+    -DREGRESSIONTEST_DOWNLOAD=ON \
+    -DGMX_FFT_LIBRARY=fftw3 -DFFTWF_LIBRARY=/opt/software/fftw/3/3.3.10-gcc-openmpi/lib/libfftw3f.so -DFFTWF_INCLUDE_DIR=/opt/software/fftw/3/3.3.10-gcc-openmpi/include
+
+# build
+make -j32
+
+# Optional: test the build
+
+make -j32 check
+
+# install
+make install
+</pre></div>
+</div>
+<p><strong>Run</strong></p>
+<p>An example job script to run <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> on Discoverer using 2 nodes for 1 hour with 128 mpi tasks per node is shown below.
+Each node on Discoverer has two 64-core AMD EPYC processors. This gives a total of 128 physical cores per node.
+The CPUs have Simultaneous Multi-Threading (SMT) which means each physical core has two logical cores, so each node will
+appear to have 256 cores to most applications. We have found that SMT offers a small performance benefit, thus recommend keeping it turned on. For most jobs this means per node you should have 128 MPI tasks (1 per physical core) and 2 OpenMP threads per MPI task (1 per logical core, 2 logical cores per physical core).</p>
+<p>For consistent benchmarking we use the additional arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-dlb</span> <span class="pre">yes</span></code>  turns on dynamic load balancing which shifts particles between MPI ranks to optimize performance. This can interfere with the tunepme setting which will optimize various aspects of the PME and DD algorithms, shifting load between ranks.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-notunepme</span></code> turns off PME load balancing because it can interfere with the dlb yes setting. The PME settings can be tuned separately using gmx tune_pme.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-noconfout</span></code> does not create the output conformation as this is not needed for benchmarking.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-resethway</span></code> resets the performance timers halfway through the run, this removes the overhead of initialization and load balancing from the reported timings.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash
+#SBATCH --partition=cn
+#SBATCH --job-name=gmx_mdrun
+#SBATCH --time=24:00:00
+#SBATCH --nodes           2   # 2 Nodes
+#SBATCH --ntasks-per-node 128 # 1 MPI task per physical core
+#SBATCH --cpus-per-task   2   # 2 Open MPI threads per physical core (SMT in use)
+
+module purge
+
+# Load the most recent OpenMPI+GCC build
+module load gromacs/2021/latest-intel-nogpu-openmpi-gcc
+
+
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+
+
+# standard run command for mdrun
+mpirun gmx_mpi mdrun -ntomp ${SLURM_CPUS_PER_TASK} -v -s intput.tpr
+
+
+# command for consistent benchmarking performance
+#mpirun gmx_mpi mdrun -ntomp ${SLURM_CPUS_PER_TASK} -v -s input.tpr -resethway -dlb yes -notunepme -noconfout
+</pre></div>
+</div>
+<p><strong>Comparison of different builds</strong></p>
+<p>There are centrally installed versions of GROMACS than can be obtained by module load commands:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">gromacs/2021/latest-intel-nogpu-mpi</span></code> GCC compilers + MPICH MPI.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">gromacs/2021/latest-intel-nogpu-openmpi-gcc</span></code> GCC compilers + OpenMPI MPI.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">gromacs/2021/latest-intel-nogpu-openmpi-aocc</span></code> AOCC compilers + OpenMPI MPI.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">gromacs/2021/latest-oneapi-nogpu-mpi</span></code> Intel compilers + Intel MPI.</p></li>
+</ul>
+<p>The figures below show the performance for the 4 different builds for the benchmark suite.</p>
+<table class="docutils align-center">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><figure class="align-default" id="id8">
+<img alt="../_images/bench20k_HBS.svg" src="../_images/bench20k_HBS.svg" /><figcaption>
+<p><span class="caption-text"><strong>20k_HBS</strong> – 128 MPI x 2 OpenMP</span><a class="headerlink" href="#id8" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id9">
+<img alt="../_images/benchMEM1.svg" src="../_images/benchMEM1.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchMEM</strong> – 128 MPI x 2 OpenMP</span><a class="headerlink" href="#id9" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-even"><td><figure class="align-default" id="id10">
+<img alt="../_images/bench465k_HBS.svg" src="../_images/bench465k_HBS.svg" /><figcaption>
+<p><span class="caption-text"><strong>465k_HBS</strong> – 128 MPI x 2 OpenMP</span><a class="headerlink" href="#id10" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id11">
+<img alt="../_images/benchRIB1.svg" src="../_images/benchRIB1.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchRIB</strong> – 32 MPI x 8 OpenMP</span><a class="headerlink" href="#id11" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-odd"><td><figure class="align-default" id="id12">
+<img alt="../_images/benchPEP1.svg" src="../_images/benchPEP1.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchPEP</strong> – 128 MPI x 2 OpenMP</span><a class="headerlink" href="#id12" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>All benchmarks were run using 128 MPI task per node and 2 OpenMP threads per MPI task (SMT on). With the exception of benchRIB where 32 MPI tasks x 8 OpenMP threads were used.
+This was done because the error:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Fatal</span> <span class="n">error</span> <span class="p">(</span><span class="n">abort</span><span class="p">):</span>
+
+<span class="n">There</span> <span class="ow">is</span> <span class="n">no</span> <span class="n">domain</span> <span class="n">decomposition</span> <span class="k">for</span> <span class="n">N</span> <span class="n">ranks</span> <span class="n">that</span> <span class="ow">is</span> <span class="n">compatible</span> <span class="k">with</span> <span class="n">the</span>
+<span class="n">given</span> <span class="n">box</span> <span class="ow">and</span> <span class="n">a</span> <span class="n">minimum</span> <span class="n">cell</span> <span class="n">size</span> <span class="n">of</span> <span class="n">x</span> <span class="n">nm</span>
+<span class="n">Change</span> <span class="n">the</span> <span class="n">number</span> <span class="n">of</span> <span class="n">ranks</span> <span class="ow">or</span> <span class="n">mdrun</span> <span class="n">option</span> <span class="o">-</span><span class="n">rdd</span> <span class="ow">or</span> <span class="o">-</span><span class="n">dds</span>
+<span class="n">Look</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">log</span> <span class="n">file</span> <span class="k">for</span> <span class="n">details</span> <span class="n">on</span> <span class="n">the</span> <span class="n">domain</span> <span class="n">decomposition</span>
+</pre></div>
+</div>
+<p>is encountered when 1028 total MPI tasks are used, thus hybrid MPI/OpenMP parallelization must be used to scale up to 16 nodes.</p>
+<p>The results show that for the smaller systems best performance is obtained with OpenMPI and GCC, if Hybrid MPI and OpenMP is needed then MPICH gives the best performance, and for the largest system MPI+AOCC gives the best performance.</p>
+</section>
+<section id="gromacs-performance-on-piz-daint-cscs-switzerland">
+<h3>GROMACS performance on Piz Daint (CSCS, Switzerland)<a class="headerlink" href="#gromacs-performance-on-piz-daint-cscs-switzerland" title="Permalink to this headline"></a></h3>
+<p><strong>Hardware</strong></p>
+<p>Focus on XC50 GPU partitition</p>
+<p>Each node:</p>
+<ul class="simple">
+<li><p>Processor: 1 x 12-core Intel Xeon E5-2690 v3 &#64; 2.60GHz (one socket)</p></li>
+<li><p>Memory: 64GB RAM</p></li>
+<li><p>GPU: 1 x NVidia P100</p></li>
+<li><p>CRAY Aries interconnect</p></li>
+</ul>
+<p><strong>Software</strong></p>
+<p>Relevant software stack on system (available to all users via environment modules):</p>
+<ul class="simple">
+<li><p>Cray MPICH MPI library</p></li>
+<li><p>Cray-optimised FFTW</p></li>
+<li><p>Cray-libsci provides BLAS &amp; LAPACK</p></li>
+<li><p>craype-accel-nvidia60 targets the correct SM architecture to compile for the P100 GPU</p></li>
+</ul>
+<p><strong>Build</strong></p>
+<p>Build instructions Piz Daint’s XC50 GPU partition:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>module load daint-gpu
+module swap PrgEnv-cray PrgEnv-gnu
+module load cray-fftw
+module load craype-accel-nvidia60
+
+cd gromacs-2020.2
+mkdir build
+cd build
+
+cmake .. -DCMAKE_INSTALL_PREFIX=${HOME}/gromacs/2020.2 -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=CC \
+         -DGMX_MPI=on -DGMX_GPU=on -DGMX_SIMD=AVX2_256 -DGMX_FFT_LIBRARY=fftw3 -DGMX_HWLOC=on
+
+make -j 12
+make install
+</pre></div>
+</div>
+<p><strong>Run</strong></p>
+<p>Example job script to run <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> on Piz Daint’s XC50 GPU partition for 1 hour on 4 nodes, with 1 MPI rank per node and 12 OpenMP threads per rank, without hyperthreading</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash -l
+#SBATCH --job-name=benchmark
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=12
+#SBATCH --ntasks-per-core=1     # 1 = no hyperthreading, 2 = with hyperthreading
+#SBATCH --hint=nomultithread    # nomultithread = no hyperthreading, multithread = hyperthreading
+#SBATCH --partition=normal
+#SBATCH --constraint=gpu
+
+module swap PrgEnv-cray PrgEnv-gnu
+module load daint-gpu
+module load cray-fftw
+module load craype-accel-nvidia60
+
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export CRAY_CUDA_MPS=1
+
+export PATH=${HOME}/gromacs/2020.2/bin:$PATH
+
+srun gmx_mpi mdrun -s benchmark.tpr -ntomp ${OMP_NUM_THREADS}
+</pre></div>
+</div>
+<p><strong>GPU offload scenarios, hybrid MPI x OpenMP hybrid parallel execution and simultaneous multithreading</strong></p>
+<p>In order to better understand how GROMACS utilises the available
+hardware on Piz Daint and how to get good performance we can examine
+the effect on benchmark performance of the choice of which
+calculations to offload to GPU, the number of MPI ranks per node and
+OpenMP threads per rank, and use of simultaneous multithreading. Doing
+this systematically is facilitated in the first instance by disabling
+dynamic load balancing (<code class="docutils literal notranslate"><span class="pre">-dlb</span> <span class="pre">no</span></code>) and PME tuning (<code class="docutils literal notranslate"><span class="pre">-tunepme</span> <span class="pre">no</span></code>),
+which also allows us to illustrate the strength of load imbalance in
+different execution scenarios.</p>
+<p>The figures below show benchmark performance for GROMACS 2020.2 scales
+with increasing node count on Piz Daint for different combinations of
+GPU offload scenarios and for different combinations of MPI ranks and
+OpenMP threads, and with and without use of multithreading (SMT). Only
+the most relevant, i.e. some of the best-performing execution
+scenarios are shown for each benchmark. Offloading of
+coordinate updating is not included as this is only relevant for
+single node runs using a single rank (GROMACS 2020), where it is however worth using
+to obtain good performance.</p>
+<p>As argued in the general guidance above for GPU offloading, there is a
+crossover point beyond which overall performance is higher using
+dedicated PME ranks running on CPU cores rather than offloading PME
+computation to a single GPU. For smaller systems this point is more
+likely to lie beyond the number of nodes that are reasonable to use,
+i.e.  past the point of badly diminishing returns in performance
+gained from emplying additional nodes (low parallel efficiency),
+meaning that for all runs with reasonable parallel efficiency GPU
+offloading of PME gives highest performance. For larger systems
+however the crossover point is before the limit of good scaling,
+meaning that whereas best performance on small number of nodes is
+obtained with use of PME offloading, to scale well to larger numbers
+of nodes this should be disabled and only nonbonded interactions
+should be offloaded to GPU.</p>
+<table class="docutils align-center">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><figure class="align-default" id="id13">
+<img alt="../_images/20k_HBS1.svg" src="../_images/20k_HBS1.svg" /><figcaption>
+<p><span class="caption-text"><strong>20k_HBS</strong> - 2 mpi x 6 omp (SMT off)</span><a class="headerlink" href="#id13" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id14">
+<img alt="../_images/benchMEM2.svg" src="../_images/benchMEM2.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchMEM</strong> - 4 mpi x 6 omp (SMT on)</span><a class="headerlink" href="#id14" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-even"><td><figure class="align-default" id="id15">
+<img alt="../_images/465k_HBS1.svg" src="../_images/465k_HBS1.svg" /><figcaption>
+<p><span class="caption-text"><strong>465k_HBS</strong> - 8 mpi x 3 omp (SMT on)</span><a class="headerlink" href="#id15" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id16">
+<img alt="../_images/benchRIB2.svg" src="../_images/benchRIB2.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchRIB</strong> - 4 mpi x 6 omp (SMT on)</span><a class="headerlink" href="#id16" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-odd"><td><figure class="align-default" id="id17">
+<img alt="../_images/benchPEP2.svg" src="../_images/benchPEP2.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchPEP</strong> - 4 mpi x 6 omp (SMT on)</span><a class="headerlink" href="#id17" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="gromacs-performance-on-juwels-booster-module-jsc-germany">
+<h3>GROMACS performance on Juwels Booster module (JSC, Germany)<a class="headerlink" href="#gromacs-performance-on-juwels-booster-module-jsc-germany" title="Permalink to this headline"></a></h3>
+<p><a class="reference external" href="https://apps.fz-juelich.de/jsc/hps/juwels/booster-overview.html">https://apps.fz-juelich.de/jsc/hps/juwels/booster-overview.html</a></p>
+<p><strong>Hardware</strong></p>
+<p>Focus on Booster module</p>
+<dl class="simple">
+<dt>Each node has:</dt><dd><ul class="simple">
+<li><p>Processor: 2x24 core AMD EPYC 7402 (48 physical cores total, 96 logical cores with SMT)</p></li>
+<li><p>Memory: 512 GB RAM</p></li>
+<li><p>GPU: 4x NVIDIA A100, 40 GB</p></li>
+<li><p>Interconnect: Mellanox HDR200 InfiniBand</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Software</strong></p>
+<dl class="simple">
+<dt>Relevant software stack:</dt><dd><ul class="simple">
+<li><p>Compilers: GCC, Intel, NVHPC</p></li>
+<li><p>MPI runtimes: OpenMPI, ParaStationMPI</p></li>
+<li><p>CUDA</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Build</strong></p>
+<p>Build instructions to build a GPU version of GROMACS 2022 using CUDA-aware MPI with GCC and OpenMPI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash
+
+# Download the source code
+wget https://ftp.gromacs.org/gromacs/gromacs-2022.tar.gz
+
+# extract
+tar xvf gromacs-2022.tar.gz
+
+# move into the source directory
+cd gromacs-2022
+
+# make the build directory
+mkdir build
+cd build
+
+
+# load the required modules
+module load Stages/2022
+module load GCC/11.2.0
+module load CUDA/11.5
+module load OpenMPI/4.1.2
+module load CMake/3.21.1
+module load FFTW/3.3.10
+
+cmake .. -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpicxx -DGMX_FFT_LIBRARY=fftw3 -DGMX_GPU=CUDA -DGMX_MPI=ON -DGMX_OPENMP=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/.. -DGMX_HWLOC=ON
+
+make -j20
+
+make install
+</pre></div>
+</div>
+<p>Build intructions to build a GPU version of GROMACS 2022 without MPI using GCC</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash
+
+# Download the source code
+wget https://ftp.gromacs.org/gromacs/gromacs-2022.tar.gz
+
+# extract
+tar xvf gromacs-2022.tar.gz
+
+# move into the source directory
+cd gromacs-2022
+
+# make the build directory
+mkdir build
+cd build
+
+
+# load the required modules
+module load GCC/11.2.0
+module load CUDA/11.5
+module load CMake/3.21.1
+
+
+module list
+
+cmake .. -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DGMX_BUILD_OWN_FFTW=yes -DGMX_GPU=CUDA -DGMX_MPI=OFF -DGMX_OPENMP=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/.. -DGMX_HWLOC=ON
+
+make -j20
+
+make install
+</pre></div>
+</div>
+<p><strong>Run</strong></p>
+<p>Batch script to run on one node using all 4 GPUs; with GPU offloading for nonbonded, pme, and bonded; and GPU direct communication enabled.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>#!/bin/bash
+#SBATCH --account=&lt;ACCOUNT&gt;
+#SBATCH --nodes=1
+#SBATCH --ntasks=4
+#SBATCH --hint=nomultithread # turn off SMT
+#SBATCH --ntasks-per-node=4  # 1 MPI task per GPU
+#SBATCH --cpus-per-task=12
+#SBATCH --time=01:00:00
+#SBATCH --partition=booster
+#SBATCH --gres=gpu:4        # Use all 4 GPUs
+
+
+# load the required modules
+module load GCC/11.2.0
+module load CUDA/11.5
+module load OpenMPI/4.1.2
+module load FFTW/3.3.10
+
+
+# Allow GROMACS to see all 4 GPUs
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+
+# Enable direct GPU to GPU communications
+export GMX_ENABLE_DIRECT_GPU_COMM=true
+
+# activate user install of GROMACS 2022
+source &lt;user install location&gt;/gromacs-2022/bin/GMXRC
+
+srun gmx_mpi mdrun -s INPUT.tpr -ntomp ${SLURM_CPUS_PER_TASK} -nb gpu -pme gpu -bonded gpu -npme 1
+</pre></div>
+</div>
+<p><strong>Benchmark results</strong></p>
+<p>We investaged the difference between different GPU offloading scenarios and other performance settings for the strong scaling of our benchmark suite.</p>
+<table class="docutils align-center">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><figure class="align-default" id="id18">
+<img alt="../_images/benchHBS20k.svg" src="../_images/benchHBS20k.svg" /><figcaption>
+<p><span class="caption-text"><strong>20k_HBS</strong></span><a class="headerlink" href="#id18" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id19">
+<img alt="../_images/benchMEM3.svg" src="../_images/benchMEM3.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchMEM</strong></span><a class="headerlink" href="#id19" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-even"><td><figure class="align-default" id="id20">
+<img alt="../_images/benchHBS465k.svg" src="../_images/benchHBS465k.svg" /><figcaption>
+<p><span class="caption-text"><strong>465k_HBS</strong></span><a class="headerlink" href="#id20" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td><figure class="align-default" id="id21">
+<img alt="../_images/benchRIB3.svg" src="../_images/benchRIB3.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchRIB</strong></span><a class="headerlink" href="#id21" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+</tr>
+<tr class="row-odd"><td><figure class="align-default" id="id22">
+<img alt="../_images/benchPEP3.svg" src="../_images/benchPEP3.svg" /><figcaption>
+<p><span class="caption-text"><strong>benchPEP</strong></span><a class="headerlink" href="#id22" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>All simulations were run using 1 MPI task per GPU, 12 OpenMP threads per MPI task, and SMT turned off.</p>
+<dl class="simple">
+<dt>The different options are as follows:</dt><dd><ul class="simple">
+<li><p>nb - only non-bonded interactions are offloaded to the GPU.</p></li>
+<li><p>nb, pme, bonded - all interactions (non-bonded, pme, and bonded) are offloaded to GPU.</p></li>
+<li><p>direct GPU comms - the GMX_ENABLE_DIRECT_GPU_COMM flag is set. This is a non-default feature that enables communications between GPUs to done directly between the GPU memory spaces rather than being routed via the CPUs. This can offer performace benefits. It is only possible when using GROMACS internal thread-MPI or if GROMACS was build with a CUDA aware MPI library.</p></li>
+<li><p>cpu_bind - explicit CPU bindings are used with the srun command. The binding command used is <code class="docutils literal notranslate"><span class="pre">srun</span> <span class="pre">--cpu_bind=mask_cpu:0xFFF000,0xFFF,0xFFF000000000,0xFFF000000</span>&#160; <span class="pre">gmx_mpi</span>&#160;&#160;&#160;&#160; <span class="pre">mdrun</span></code>. This is due to the specific hardware layout of JuwelsBooster.</p></li>
+<li><p>update - The update GPU option is used. This can only be used when the constrains settings are changed from <code class="docutils literal notranslate"><span class="pre">constraints=all-bonds</span></code> to <code class="docutils literal notranslate"><span class="pre">constraints=h-bonds</span></code>. (We can only do this for the benchPEP system where we use the benchPEP-h.tpr from the previously referenced webpage).</p></li>
+</ul>
+</dd>
+</dl>
+<p>We see that best performance is obtained when as much as possible is offloaded to the GPU. The explicit CPU binding settings slightly increase performance. The largest extra performace increase occurs when the <code class="docutils literal notranslate"><span class="pre">update</span> <span class="pre">gpu</span></code> option can be set – this results in as much of the calculation as possible being run on the GPU. The direct GPU communications settings also increases performace, however this feature is still in development and sometimes gives errors so output should be checked before using it.
+The parallel scaling is generally poor when more than 1 node is used. This is because GROMACS 2022 can only have 1 PME GPU rank, for 1 node on JuwelsBooster there are 4 GPUs so 1/4 GPUs are used for PME calculations, this is close to ideal for typical GROMACS simulations. For 2 nodes then 1/8 GPUs are used for PME calculations, this is under-balanced relative to the other 7 GPUs doing PP calculations which have to wait for the PME calculations resulting in poorer parallel performance.</p>
+<p><strong>Multiple simulations per Node/ per GPU</strong></p>
+<p>Only large systems can fully make use of an entire Juwels Booster node (4 GPUs). For smaller systems It can be beneficial to
+have multiple simulations per node, or even per GPU to get higher throughput. On Juwels booster you are always charged for a full node.</p>
+<p>We have found that you <em>must use the Non-MPI version of gromacs for this</em>. This is because it can be lauched without <cite>srun</cite> so there is more flexibility in sharing the GPU resources.</p>
+<p>Suppose you have a set of 8 folders labelled 1 2 3 4 5 6 7 8. You can run 8 simultaneous simulations, each using 6 threads, and each sharing a GPU with one other simulation. The script below will lauch such a simulation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1">#SBATCH --account=&lt;ACCOUNT&gt;</span>
+<span class="c1">#SBATCH --nodes=1</span>
+<span class="c1">#SBATCH --ntasks=8           # number of simulations</span>
+<span class="c1">#SBATCH --hint=nomultithread</span>
+<span class="c1">#SBATCH --ntasks-per-node=8  # number of simulations</span>
+<span class="c1">#SBATCH --cpus-per-task=6    # threads per simulation</span>
+<span class="c1">#SBATCH --time=01:00:00</span>
+<span class="c1">#SBATCH --partition=booster</span>
+<span class="c1">#SBATCH --gres=gpu:4         # use all 4 GPUs</span>
+<span class="c1">#SBATCH --cuda-mps           # turn on CUDA MPS to enable multiple processes per GPU</span>
+
+
+
+
+<span class="c1"># load the required modules</span>
+module load GCC/11.2.0
+module load CUDA/11.5
+
+module list
+
+<span class="c1"># Allow GROMACS to see all 4 GPUs</span>
+<span class="nb">export</span> <span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">0</span>,1,2,3
+
+
+<span class="nb">export</span> <span class="nv">OMP_NUM_THREADS</span><span class="o">=</span><span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span>
+
+
+<span class="c1"># make sure we are using a non-mpi version of gromacs</span>
+<span class="nb">source</span> &lt;user install location&gt;/gromacs-2022_NOMPI/bin/GMXRC
+
+<span class="c1"># input file</span>
+<span class="nv">TPR</span><span class="o">=</span>input.tpr
+
+
+<span class="nv">EXE</span><span class="o">=</span><span class="s2">&quot;gmx mdrun&quot;</span>  <span class="c1"># Non MPI mdrun</span>
+
+<span class="c1"># Set thread mpi to 1 with -ntmpi option</span>
+<span class="nv">SETTINGS</span><span class="o">=</span><span class="s2">&quot;-s </span><span class="si">${</span><span class="nv">TPR</span><span class="si">}</span><span class="s2"> -ntmpi 1 -ntomp </span><span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span><span class="s2"> -nb gpu -pme gpu -bonded gpu&quot;</span>
+
+
+<span class="c1"># Options below for 4,8,16,24, or 48 simulations per node.</span>
+<span class="c1"># Uncomment the desired &quot;folder&quot; option and the corresponding &quot;gputasks&quot; option,</span>
+<span class="c1"># make sure the rest are commented out and ensure the --ntasks,</span>
+<span class="c1"># --ntasks-per-node, and --cpus-per-task are set to the corresponding values.</span>
+
+
+<span class="c1"># Currently the 8 simulations option is being used.</span>
+
+
+
+<span class="c1"># 4 simulations: (make sure ntasks and ntasks-per-node=4 and cpus-per-task=12)</span>
+<span class="c1">#folders=(1 2 3 4)</span>
+<span class="c1">#gputasks=(11 00 33 22)</span>
+
+<span class="c1"># 8 simulations: (make sure ntasks and ntasks-per-node=8 and cpus-per-task=6)</span>
+<span class="nv">folders</span><span class="o">=(</span><span class="m">1</span> <span class="m">2</span> <span class="m">3</span> <span class="m">4</span> <span class="m">5</span> <span class="m">6</span> <span class="m">7</span> <span class="m">8</span><span class="o">)</span>
+<span class="nv">gputasks</span><span class="o">=(</span><span class="m">11</span> <span class="m">11</span> <span class="m">00</span> <span class="m">00</span> <span class="m">33</span> <span class="m">33</span> <span class="m">22</span> <span class="m">22</span><span class="o">)</span>
+
+<span class="c1"># 16 simulations: (make sure ntasks and ntasks-per-node=16 and cpus-per-task=3)</span>
+<span class="c1">#folders=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)</span>
+<span class="c1">#gputasks=(11 11 11 11 00 00 00 00 33 33 33 33 22 22 22 22)</span>
+
+<span class="c1"># 24 simulations: (make sure ntasks and ntasks-per-node=24 and cpus-per-task=2)</span>
+<span class="c1">#folders=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24)</span>
+<span class="c1">#gputasks=(11 11 11 11 11 11 00 00 00 00 00 00 33 33 33 33 33 33 22 22 22 22 22 22)</span>
+
+<span class="c1">#48 simulations: (make sure ntasks and ntasks-per-node=48 and cpus-per-task=1)</span>
+<span class="c1">#folders=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47)</span>
+<span class="c1">#gputasks=(11 11 11 11 11 11 11 11 11 11 11 11 00 00 00 00 00 00 00 00 00 00 00 00  33 33 33 33 33 33 33 33 33 33 33 33 22 22 22 22 22 22 22 22 22 22 22 22 )</span>
+
+
+
+
+
+<span class="c1"># make cpu bindings to ensure cores are not shared between the simulations</span>
+<span class="c1"># this works for any of the simulation number options, does not need to be changed</span>
+<span class="nv">bindings</span><span class="o">=(</span><span class="k">$(</span> <span class="k">for</span> <span class="o">((</span> <span class="nv">i</span><span class="o">=</span><span class="m">0</span> <span class="p">;</span> i&lt;<span class="m">48</span> <span class="p">;</span> <span class="nv">i</span><span class="o">+=</span><span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span> <span class="k">)</span><span class="o">)</span><span class="p">;</span> <span class="k">do</span> <span class="nb">echo</span> <span class="nv">$i</span>-<span class="k">$((</span><span class="si">${</span><span class="nv">i</span><span class="si">}</span> <span class="o">+</span> <span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span> <span class="o">-</span> <span class="m">1</span> <span class="k">))</span><span class="p">;</span> <span class="k">done</span> <span class="o">))</span>
+
+<span class="c1"># This works in conjunction with the gputasks settings which map the process to GPU close to the</span>
+<span class="c1"># specified GPU.</span>
+
+
+<span class="c1"># lauch all simulations in the specified folders in parallel</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="si">${</span><span class="p">!folders[@]</span><span class="si">}</span>
+<span class="k">do</span>
+    <span class="nb">cd</span> <span class="si">${</span><span class="nv">folders</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span>
+    <span class="nb">pwd</span>
+    <span class="nb">echo</span> <span class="si">${</span><span class="nv">bindings</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span>
+
+    <span class="c1"># use numactl to bind the simulations to specific cores.</span>
+    numactl --physcpubind<span class="o">=</span><span class="si">${</span><span class="nv">bindings</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span> <span class="si">${</span><span class="nv">EXE</span><span class="si">}</span> <span class="si">${</span><span class="nv">SETTINGS</span><span class="si">}</span> -gputasks <span class="si">${</span><span class="nv">gputasks</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span> &gt; out.txt <span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">&amp;</span>
+    <span class="nb">cd</span> ..
+<span class="k">done</span>
+
+<span class="nb">wait</span>
+</pre></div>
+</div>
+<p>The script also contains options for 4,16,24, or 48 simulations per node.</p>
+<p>CUDA MPS in enabled in the script which allows for more efficient GPU sharing.</p>
+<p>The folders array contains 8 folder names.
+The gputasks array contains the GROMACs gpu ID mapping. There are two numbers per simulation for the
+two GPU task per simualtion: PP and PME. These are the same number so they run on the same GPU. The order
+is specific to Juwels Boosters setup.</p>
+<p>The bindings array evaluates to:
+(0-5 6-11 12-17 18-23 24-29 30-35 36-41 42-47)</p>
+<p>With the gputasks array:
+(11 11 00 00 33 33 22 22)</p>
+<p>This results in the first simulation using cpus 0 to 5 and gpu 1. CPUs 0 to 5 are
+closest connected to GPU 1 as per the Juwels Booster hardware information: <a class="reference external" href="https://apps.fz-juelich.de/jsc/hps/juwels/booster-overview.html">https://apps.fz-juelich.de/jsc/hps/juwels/booster-overview.html</a>.</p>
+<p>The plot below shows the total throughput on one node for multiple simulations.
+This is for the benchMEM benchmark.</p>
+<figure class="align-default">
+<img alt="../_images/benchMEM_throughput.svg" src="../_images/benchMEM_throughput.svg" /></figure>
+<p><strong>BenchMEM</strong> – throughput for multiple simulations per Node/ per GPU.</p>
+<p>We can see that highest throughput is achived when 16 simulations are run per node (4 simulations per GPU). For smaller systems the optimum number of simulations per node will be larger, for larger systems it will be smaller.
+The CUDA MPS setting significantly increases the performace, this is because this setting allows mutliple process to better share a single GPU.</p>
+</section>
+</section>
+<section id="acting-on-performance-related-warnings-found-in-md-log">
+<h2>Acting on performance-related warnings found in <code class="docutils literal notranslate"><span class="pre">md.log</span></code><a class="headerlink" href="#acting-on-performance-related-warnings-found-in-md-log" title="Permalink to this headline"></a></h2>
+<p>This section provides guidance on identifying, understanding, and acting on performance-related warnings and suggestions issued by <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> that you may encounter in <code class="docutils literal notranslate"><span class="pre">md.log</span></code>. These may suggest more efficient ways to launch <code class="docutils literal notranslate"><span class="pre">mdrun</span></code>, or spot if the GROMACS installation you are using has not been built to give good performance on the hardware and suggest how to improve this.</p>
+<p><strong>Fatal errors</strong></p>
+<ul>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Feature</span> <span class="ow">not</span> <span class="n">implemented</span><span class="p">:</span>
+<span class="n">PME</span> <span class="n">GPU</span> <span class="n">does</span> <span class="ow">not</span> <span class="n">support</span> <span class="n">PME</span> <span class="n">decomposition</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Need to pass <code class="docutils literal notranslate"><span class="pre">-npme</span> <span class="pre">1</span></code> as an option to <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> to instruct GROMACS to run offload PME calculations on one rank only.</p></li>
+</ul>
+</li>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">128</span> <span class="n">OpenMP</span> <span class="n">threads</span> <span class="n">were</span> <span class="n">requested</span><span class="o">.</span> <span class="n">Since</span> <span class="n">the</span> <span class="n">non</span><span class="o">-</span><span class="n">bonded</span> <span class="n">force</span> <span class="n">buffer</span> <span class="n">reduction</span>
+<span class="ow">is</span> <span class="n">prohibitively</span> <span class="n">slow</span> <span class="k">with</span> <span class="n">more</span> <span class="n">than</span> <span class="mi">64</span> <span class="n">threads</span><span class="p">,</span> <span class="n">we</span> <span class="n">do</span> <span class="ow">not</span> <span class="n">allow</span> <span class="n">this</span><span class="o">.</span> <span class="n">Use</span> <span class="mi">64</span>
+<span class="ow">or</span> <span class="n">less</span> <span class="n">OpenMP</span> <span class="n">threads</span><span class="o">.</span>
+</pre></div>
+</div>
+</li>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">There</span> <span class="ow">is</span> <span class="n">no</span> <span class="n">domain</span> <span class="n">decomposition</span> <span class="k">for</span> <span class="mi">11</span> <span class="n">ranks</span> <span class="n">that</span> <span class="ow">is</span> <span class="n">compatible</span> <span class="k">with</span> <span class="n">the</span>
+<span class="n">given</span> <span class="n">box</span> <span class="ow">and</span> <span class="n">a</span> <span class="n">minimum</span> <span class="n">cell</span> <span class="n">size</span> <span class="n">of</span> <span class="mf">0.79375</span> <span class="n">nm</span>
+<span class="n">Change</span> <span class="n">the</span> <span class="n">number</span> <span class="n">of</span> <span class="n">ranks</span> <span class="ow">or</span> <span class="n">mdrun</span> <span class="n">option</span> <span class="o">-</span><span class="n">rdd</span> <span class="ow">or</span> <span class="o">-</span><span class="n">dds</span>
+<span class="n">Look</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">log</span> <span class="n">file</span> <span class="k">for</span> <span class="n">details</span> <span class="n">on</span> <span class="n">the</span> <span class="n">domain</span> <span class="n">decomposition</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>You will need to use a smaller number of MPI tasks, performance can possibly be increased by using hybrid MPI/OpenMPI execution and increasing the number of OpenMP threads.</p></li>
+</ul>
+</li>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">The</span> <span class="n">number</span> <span class="n">of</span> <span class="n">ranks</span> <span class="n">selected</span> <span class="k">for</span> <span class="n">particle</span><span class="o">-</span><span class="n">particle</span> <span class="n">work</span> <span class="p">(</span><span class="mi">383</span><span class="p">)</span> <span class="n">contains</span> <span class="n">a</span> <span class="n">large</span>
+<span class="n">prime</span> <span class="n">factor</span> <span class="mf">383.</span> <span class="n">In</span> <span class="n">most</span> <span class="n">cases</span> <span class="n">this</span> <span class="n">will</span> <span class="n">lead</span> <span class="n">to</span> <span class="n">bad</span> <span class="n">performance</span><span class="o">.</span> <span class="n">Choose</span> <span class="n">a</span>
+<span class="n">number</span> <span class="k">with</span> <span class="n">smaller</span> <span class="n">prime</span> <span class="n">factors</span> <span class="ow">or</span> <span class="nb">set</span> <span class="n">the</span> <span class="n">decomposition</span> <span class="p">(</span><span class="n">option</span> <span class="o">-</span><span class="n">dd</span><span class="p">)</span>
+<span class="n">manually</span><span class="o">.</span>
+</pre></div>
+</div>
+</li>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Inconsistency</span> <span class="ow">in</span> <span class="n">user</span> <span class="nb">input</span><span class="p">:</span>
+<span class="n">Update</span> <span class="n">task</span> <span class="n">on</span> <span class="n">the</span> <span class="n">GPU</span> <span class="n">was</span> <span class="n">required</span><span class="p">,</span>
+<span class="n">but</span> <span class="n">the</span> <span class="n">following</span> <span class="n">condition</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="n">were</span> <span class="ow">not</span> <span class="n">satisfied</span><span class="p">:</span>
+<span class="n">Domain</span> <span class="n">decomposition</span> <span class="n">without</span> <span class="n">GPU</span> <span class="n">halo</span> <span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">supported</span><span class="o">.</span>
+<span class="n">With</span> <span class="n">separate</span> <span class="n">PME</span> <span class="n">rank</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">PME</span> <span class="n">must</span> <span class="n">use</span> <span class="n">direct</span> <span class="n">communication</span><span class="o">.</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>This error is because currently (GROMACS 2020) offloading of update and constraints on a GPU is not supported with domain decomposition, free-energy, virtual sites, Ewald surface correction, replica exchange, constraint pulling, orientation restraints and computational electrophysiology.</p></li>
+</ul>
+</li>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span> <span class="n">Update</span> <span class="n">task</span> <span class="n">on</span> <span class="n">the</span> <span class="n">GPU</span> <span class="n">was</span> <span class="n">required</span><span class="p">,</span> <span class="n">but</span> <span class="n">the</span> <span class="n">following</span> <span class="n">condition</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="n">were</span> <span class="ow">not</span> <span class="n">satisfied</span><span class="p">:</span>
+ <span class="n">Virtual</span> <span class="n">sites</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span><span class="o">.</span>
+ <span class="n">Non</span><span class="o">-</span><span class="n">connecting</span> <span class="n">constraints</span> <span class="n">are</span> <span class="ow">not</span> <span class="n">supported</span>
+ <span class="n">The</span> <span class="n">number</span> <span class="n">of</span> <span class="n">coupled</span> <span class="n">constraints</span> <span class="ow">is</span> <span class="n">higher</span> <span class="n">than</span> <span class="n">supported</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">CUDA</span> <span class="n">LINCS</span>
+
+<span class="o">-</span> <span class="n">This</span> <span class="n">error</span> <span class="ow">is</span> <span class="n">because</span> <span class="n">currently</span> <span class="p">(</span><span class="n">GROMACS</span> <span class="mi">2020</span><span class="p">)</span> <span class="n">offloading</span> <span class="n">of</span> <span class="n">update</span> <span class="ow">and</span> <span class="n">constraints</span> <span class="n">on</span> <span class="n">a</span> <span class="n">GPU</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">supported</span> <span class="k">with</span> <span class="n">domain</span> <span class="n">decomposition</span><span class="p">,</span> <span class="n">free</span><span class="o">-</span><span class="n">energy</span><span class="p">,</span> <span class="n">virtual</span> <span class="n">sites</span><span class="p">,</span> <span class="n">Ewald</span> <span class="n">surface</span> <span class="n">correction</span><span class="p">,</span> <span class="n">replica</span> <span class="n">exchange</span><span class="p">,</span> <span class="n">constraint</span> <span class="n">pulling</span><span class="p">,</span> <span class="n">orientation</span> <span class="n">restraints</span> <span class="ow">and</span> <span class="n">computational</span> <span class="n">electrophysiology</span><span class="o">.</span>
+</pre></div>
+</div>
+</li>
+<li><p>Fatal error (abort):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">GPU</span> <span class="n">direct</span> <span class="n">communications</span> <span class="n">cannot</span> <span class="n">be</span> <span class="n">used</span> <span class="k">for</span> <span class="n">multi</span><span class="o">-</span><span class="n">dimensional</span> <span class="n">halo</span> <span class="n">exchanges</span>
+<span class="k">with</span> <span class="n">more</span> <span class="n">than</span> <span class="n">one</span> <span class="n">pulse</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">second</span> <span class="ow">or</span> <span class="n">third</span> <span class="n">dimension</span><span class="o">.</span> <span class="n">Please</span> <span class="k">try</span> <span class="n">using</span>
+<span class="n">fewer</span> <span class="n">ranks</span> <span class="p">(</span><span class="ow">or</span> <span class="n">change</span> <span class="n">the</span> <span class="n">decomposition</span> <span class="k">with</span> <span class="s1">&#39;-dd&#39;</span><span class="p">),</span> <span class="ow">or</span> <span class="k">if</span> <span class="n">that</span> <span class="n">does</span> <span class="ow">not</span> <span class="n">work</span>
+<span class="n">then</span> <span class="n">disable</span> <span class="n">GPU</span> <span class="n">direct</span> <span class="n">communications</span><span class="o">.</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p><strong>Performance warnings</strong></p>
+<ul>
+<li><p>Performance warning:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Highest</span> <span class="n">SIMD</span> <span class="n">level</span> <span class="n">requested</span> <span class="n">by</span> <span class="nb">all</span> <span class="n">nodes</span> <span class="ow">in</span> <span class="n">run</span><span class="p">:</span> <span class="n">AVX_512</span>
+<span class="n">SIMD</span> <span class="n">instructions</span> <span class="n">selected</span> <span class="n">at</span> <span class="nb">compile</span> <span class="n">time</span><span class="p">:</span>       <span class="n">AVX2_256</span>
+<span class="n">This</span> <span class="n">program</span> <span class="n">was</span> <span class="n">compiled</span> <span class="k">for</span> <span class="n">different</span> <span class="n">hardware</span> <span class="n">than</span> <span class="n">you</span> <span class="n">are</span> <span class="n">running</span> <span class="n">on</span><span class="p">,</span>
+<span class="n">which</span> <span class="n">could</span> <span class="n">influence</span> <span class="n">performance</span><span class="o">.</span> <span class="n">This</span> <span class="n">build</span> <span class="n">might</span> <span class="n">have</span> <span class="n">been</span> <span class="n">configured</span> <span class="n">on</span> <span class="n">a</span>
+<span class="n">login</span> <span class="n">node</span> <span class="k">with</span> <span class="n">only</span> <span class="n">a</span> <span class="n">single</span> <span class="n">AVX</span><span class="o">-</span><span class="mi">512</span> <span class="n">FMA</span> <span class="n">unit</span> <span class="p">(</span><span class="ow">in</span> <span class="n">which</span> <span class="n">case</span> <span class="n">AVX2</span> <span class="ow">is</span> <span class="n">faster</span><span class="p">),</span>
+<span class="k">while</span> <span class="n">the</span> <span class="n">node</span> <span class="n">you</span> <span class="n">are</span> <span class="n">running</span> <span class="n">on</span> <span class="n">has</span> <span class="n">dual</span> <span class="n">AVX</span><span class="o">-</span><span class="mi">512</span> <span class="n">FMA</span> <span class="n">units</span><span class="o">.</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Note: for Intel Skylake &amp; Cascade Lake it is possible that narrower SIMD width AVX2_256 is actually faster than AVX_512</p></li>
+</ul>
+</li>
+<li><p>Performance warning:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>NOTE: PME load balancing increased the non-bonded workload by more than 50%.
+For better performance, use (more) PME ranks (mdrun -npme),
+or if you are beyond the scaling limit, use fewer total ranks (or nodes).
+
+- Use ``tune_pme``
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="gromacs-reference-benchmarks-performance-on-prace-eurohpc-machines">
+<h2>GROMACS Reference Benchmarks Performance on PRACE/EuroHPC machines<a class="headerlink" href="#gromacs-reference-benchmarks-performance-on-prace-eurohpc-machines" title="Permalink to this headline"></a></h2>
+<p>This section provides a reference set of benchmark simulation
+performance results representative of good obtainable performance on
+PRACE/EuroHPC machines with GROMACS built and run according to best
+practice outlined in this guide.</p>
+<p>These results are intended as a convenient reference to help
+researchers estimate compute time requirements for their proposed
+research in preparation for applying to HPC resource allocation calls.</p>
+<p>[Table showing ns/day and walltime hours/ns with good performance
+(PME-tuned, dlb on, etc.) for above benchmarks on these machines,
+i.e. summary of good achievable building on above results to optimise]</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Performance Cookbook</a><ul>
+<li><a class="reference internal" href="#general-guidance-on-running-mdrun-and-strategy-for-getting-good-performance">General guidance on running <code class="docutils literal notranslate"><span class="pre">mdrun</span></code> and strategy for getting good performance</a><ul>
+<li><a class="reference internal" href="#single-node">Single node</a></li>
+<li><a class="reference internal" href="#multiple-networked-compute-nodes-in-a-cluster-or-supercomputer">Multiple networked compute nodes in a cluster or supercomputer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#general-guidance-for-benchmarking">General guidance for benchmarking</a></li>
+<li><a class="reference internal" href="#getting-good-gromacs-performance-on-prace-eurohpc-machines">Getting good GROMACS performance on PRACE/EuroHPC machines</a><ul>
+<li><a class="reference internal" href="#benchmarks">Benchmarks</a></li>
+<li><a class="reference internal" href="#gromacs-performance-on-hawk-hlrs-germany">GROMACS performance on HAWK (HLRS, Germany)</a></li>
+<li><a class="reference internal" href="#gromacs-performance-on-discoverer-petasc-bulgaria">GROMACS performance on Discoverer (PetaSC Bulgaria)</a></li>
+<li><a class="reference internal" href="#gromacs-performance-on-piz-daint-cscs-switzerland">GROMACS performance on Piz Daint (CSCS, Switzerland)</a></li>
+<li><a class="reference internal" href="#gromacs-performance-on-juwels-booster-module-jsc-germany">GROMACS performance on Juwels Booster module (JSC, Germany)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#acting-on-performance-related-warnings-found-in-md-log">Acting on performance-related warnings found in <code class="docutils literal notranslate"><span class="pre">md.log</span></code></a></li>
+<li><a class="reference internal" href="#gromacs-reference-benchmarks-performance-on-prace-eurohpc-machines">GROMACS Reference Benchmarks Performance on PRACE/EuroHPC machines</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../workflow/workflow.html"
+                          title="previous chapter">Suggested workflow for GROMACS simulations</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/cookbook/cookbook.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../workflow/workflow.html" title="Suggested workflow for GROMACS simulations"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">GROMACS Best Practice Guide  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Performance Cookbook</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    </div>
+  </body>
+</html>

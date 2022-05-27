@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>&lt;no title&gt; &#8212; GROMACS Best Practice Guide  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">GROMACS Best Practice Guide  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">&lt;no title&gt;</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1">#SBATCH --account=&lt;ACCOUNT&gt;</span>
+<span class="c1">#SBATCH --nodes=1</span>
+<span class="c1">#SBATCH --ntasks=8           # number of simulations</span>
+<span class="c1">#SBATCH --hint=nomultithread</span>
+<span class="c1">#SBATCH --ntasks-per-node=8  # number of simulations</span>
+<span class="c1">#SBATCH --cpus-per-task=6    # threads per simulation</span>
+<span class="c1">#SBATCH --time=01:00:00</span>
+<span class="c1">#SBATCH --partition=booster</span>
+<span class="c1">#SBATCH --gres=gpu:4         # use all 4 GPUs</span>
+<span class="c1">#SBATCH --cuda-mps           # turn on CUDA MPS to enable multiple processes per GPU</span>
+
+
+
+
+<span class="c1"># load the required modules</span>
+module load GCC/11.2.0
+module load CUDA/11.5
+
+module list
+
+<span class="c1"># Allow GROMACS to see all 4 GPUs</span>
+<span class="nb">export</span> <span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">0</span>,1,2,3
+
+
+<span class="nb">export</span> <span class="nv">OMP_NUM_THREADS</span><span class="o">=</span><span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span>
+
+
+<span class="c1"># make sure we are using a non-mpi version of gromacs</span>
+<span class="nb">source</span> &lt;user install location&gt;/gromacs-2022_NOMPI/bin/GMXRC
+
+<span class="c1"># input file</span>
+<span class="nv">TPR</span><span class="o">=</span>input.tpr
+
+
+<span class="nv">EXE</span><span class="o">=</span><span class="s2">&quot;gmx mdrun&quot;</span>  <span class="c1"># Non MPI mdrun</span>
+
+<span class="c1"># Set thread mpi to 1 with -ntmpi option</span>
+<span class="nv">SETTINGS</span><span class="o">=</span><span class="s2">&quot;-s </span><span class="si">${</span><span class="nv">TPR</span><span class="si">}</span><span class="s2"> -ntmpi 1 -ntomp </span><span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span><span class="s2"> -nb gpu -pme gpu -bonded gpu&quot;</span>
+
+
+<span class="c1"># Options below for 4,8,16,24, or 48 simulations per node.</span>
+<span class="c1"># Uncomment the desired &quot;folder&quot; option and the corresponding &quot;gputasks&quot; option,</span>
+<span class="c1"># make sure the rest are commented out and ensure the --ntasks,</span>
+<span class="c1"># --ntasks-per-node, and --cpus-per-task are set to the corresponding values.</span>
+
+
+<span class="c1"># Currently the 8 simulations option is being used.</span>
+
+
+
+<span class="c1"># 4 simulations: (make sure ntasks and ntasks-per-node=4 and cpus-per-task=12)</span>
+<span class="c1">#folders=(1 2 3 4)</span>
+<span class="c1">#gputasks=(11 00 33 22)</span>
+
+<span class="c1"># 8 simulations: (make sure ntasks and ntasks-per-node=8 and cpus-per-task=6)</span>
+<span class="nv">folders</span><span class="o">=(</span><span class="m">1</span> <span class="m">2</span> <span class="m">3</span> <span class="m">4</span> <span class="m">5</span> <span class="m">6</span> <span class="m">7</span> <span class="m">8</span><span class="o">)</span>
+<span class="nv">gputasks</span><span class="o">=(</span><span class="m">11</span> <span class="m">11</span> <span class="m">00</span> <span class="m">00</span> <span class="m">33</span> <span class="m">33</span> <span class="m">22</span> <span class="m">22</span><span class="o">)</span>
+
+<span class="c1"># 16 simulations: (make sure ntasks and ntasks-per-node=16 and cpus-per-task=3)</span>
+<span class="c1">#folders=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)</span>
+<span class="c1">#gputasks=(11 11 11 11 00 00 00 00 33 33 33 33 22 22 22 22)</span>
+
+<span class="c1"># 24 simulations: (make sure ntasks and ntasks-per-node=24 and cpus-per-task=2)</span>
+<span class="c1">#folders=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24)</span>
+<span class="c1">#gputasks=(11 11 11 11 11 11 00 00 00 00 00 00 33 33 33 33 33 33 22 22 22 22 22 22)</span>
+
+<span class="c1">#48 simulations: (make sure ntasks and ntasks-per-node=48 and cpus-per-task=1)</span>
+<span class="c1">#folders=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47)</span>
+<span class="c1">#gputasks=(11 11 11 11 11 11 11 11 11 11 11 11 00 00 00 00 00 00 00 00 00 00 00 00  33 33 33 33 33 33 33 33 33 33 33 33 22 22 22 22 22 22 22 22 22 22 22 22 )</span>
+
+
+
+
+
+<span class="c1"># make cpu bindings to ensure cores are not shared between the simulations</span>
+<span class="c1"># this works for any of the simulation number options, does not need to be changed</span>
+<span class="nv">bindings</span><span class="o">=(</span><span class="k">$(</span> <span class="k">for</span> <span class="o">((</span> <span class="nv">i</span><span class="o">=</span><span class="m">0</span> <span class="p">;</span> i&lt;<span class="m">48</span> <span class="p">;</span> <span class="nv">i</span><span class="o">+=</span><span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span> <span class="k">)</span><span class="o">)</span><span class="p">;</span> <span class="k">do</span> <span class="nb">echo</span> <span class="nv">$i</span>-<span class="k">$((</span><span class="si">${</span><span class="nv">i</span><span class="si">}</span> <span class="o">+</span> <span class="si">${</span><span class="nv">SLURM_CPUS_PER_TASK</span><span class="si">}</span> <span class="o">-</span> <span class="m">1</span> <span class="k">))</span><span class="p">;</span> <span class="k">done</span> <span class="o">))</span>
+
+<span class="c1"># This works in conjunction with the gputasks settings which map the process to GPU close to the</span>
+<span class="c1"># specified GPU.</span>
+
+
+<span class="c1"># lauch all simulations in the specified folders in parallel</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="si">${</span><span class="p">!folders[@]</span><span class="si">}</span>
+<span class="k">do</span>
+    <span class="nb">cd</span> <span class="si">${</span><span class="nv">folders</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span>
+    <span class="nb">pwd</span>
+    <span class="nb">echo</span> <span class="si">${</span><span class="nv">bindings</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span>
+
+    <span class="c1"># use numactl to bind the simulations to specific cores.</span>
+    numactl --physcpubind<span class="o">=</span><span class="si">${</span><span class="nv">bindings</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span> <span class="si">${</span><span class="nv">EXE</span><span class="si">}</span> <span class="si">${</span><span class="nv">SETTINGS</span><span class="si">}</span> -gputasks <span class="si">${</span><span class="nv">gputasks</span><span class="p">[</span><span class="nv">$i</span><span class="p">]</span><span class="si">}</span> &gt; out.txt <span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">&amp;</span>
+    <span class="nb">cd</span> ..
+<span class="k">done</span>
+
+<span class="nb">wait</span>
+</pre></div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/cookbook/run/juwelsbooster/multisimscript.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">GROMACS Best Practice Guide  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">&lt;no title&gt;</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    </div>
+  </body>
+</html>
