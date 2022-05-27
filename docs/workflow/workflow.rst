@@ -86,7 +86,7 @@ out your system topologies directly. For one, this allows for better
 reproducibility in the even that you want to simulate a new system with this 
 forcefield. It also has a number of functionalities that can be useful. For 
 instance, adding a ``watermodels.dat`` file into the forcefield directory 
-makes it easy to keep track of water models available. A line and descripting 
+makes it easy to keep track of water models available. A line and description
 can be added in this file for each water-model included topology file. This 
 file is what prompts the choice of water model in ``pdb2gmx``.
 
@@ -470,8 +470,9 @@ use). More information on these and other options can be found on the GROMACS
 `gmx mdrun <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-mdrun.html>`_
 page.
 
+----------------------------------
 Post-processing and analysis tools
-==================================
+----------------------------------
 
 With the simulation complete, we can analyse the simulation trajectory and 
 understand what the simulation has demonstrated. GROMACS offers a number of 
@@ -480,7 +481,7 @@ can be used to: generate the thermodynamic properties of interest; obtain
 radial distribution functions and correlation functions; 
 
 Thermodynamic properties of the system
---------------------------------------
+======================================
 
 The GROMACS ``energy`` tool can be used to extract energy components from an 
 energy (``.edr``) file. By default, this tool will generate an XMGrace file. 
@@ -500,7 +501,7 @@ can be found in the GROMACS manual
 page.
 
 Generating an index file
-------------------------
+========================
 
 GROMACS has a post-analysis tool for generating radial distribution functions 
 (RDFs). Before generating an RDF, we will need to create a GROMACS index 
@@ -533,7 +534,7 @@ page.
 
 
 Radial distribution function
-----------------------------
+============================
 
 Once an appropriate index file is generated, with the atoms for which an RDF 
 is to be calculated indexed into appropriate groups, we can use the 
@@ -558,7 +559,7 @@ one not chosen as reference). Note that it is possible for your reference and
 selected groups to be the same group.
 
 Mean squared displacement and velocity autocorrelation functions
-----------------------------------------------------------------
+================================================================
 
 Gromacs offers a number of tools to calculate correlation and autocorrelation 
 functions. Here, we will look at two specific example: the mean-squared 
@@ -602,6 +603,78 @@ present, you may need to create it by following the instructions in the
 add it with the ``-n ${INPUT_INDEX}.ndx`` option. You can find more options 
 and information on the GROMACS manual 
 `gmx velacc <http://manual.gromacs.org/documentation/current/onlinehelp/gmx-velacc.html#gmx-velacc>`_ page.
+
+
+Calculating distances
+=====================
+Interparticle distances, that is the distance between two particles in a simulation
+trajectory, can be calculated using the `gmx distance <https://manual.gromacs.org/documentation/current/onlinehelp/gmx-distance.html>`_ comand
+
+.. code-block:: bash
+
+  gmx distance -f ${INPUT_TRAJECTORY}.trr -select <selection> -oall ${OUTPUT}.xvg
+
+Where ``${INPUT_TRAJECTORY}.trr`` is the trajectory file of the simulation for 
+which the distances are being calculated. ``<selection>`` is where you specify 
+a list of pairs of particles to calculate the distance between. More information 
+on selections can be found in the gromacs manual `selections <https://manual.gromacs.org/documentation/current/onlinehelp/selections.html>`_ page.
+As an example to calculate the distance between the i-th and j-th atom you could use the selection:
+
+.. code-block:: bash
+
+  gmx distance -f ${INPUT_TRAJECTORY}.trr -select "atomnr i j" -oall ${OUTPUT}.xvg
+
+Where ``i`` and ``j`` are the atom numbers. ``${OUTPUT}.xvg`` will contain a timeseries 
+of the distance between pair ``i`` and ``j``.
+
+More than one pair of atoms can be specified, e.g 
+
+.. code-block:: bash
+
+  gmx distance -f ${INPUT_TRAJECTORY}.trr -select "atomnr i j k l" -oall ${OUTPUT}.xvg
+
+``${OUTPUT}.xvg`` will contain a timeseries of the distance between atoms ``i`` and ``j``, and 
+the distance between atoms ``k`` and ``l``. The options ``-oav`` and ``-oh`` can be used to produce 
+a timeseries of the average distance for all selected pairs or a histogram respectively.
+
+
+A similar tool is `gmx mindist <https://manual.gromacs.org/documentation/current/onlinehelp/gmx-mindist.html>`_ which computes
+the minimum distance between two groups.
+
+.. code-block:: bash
+
+  gmx mindist -f ${INPUT_TRAJECTORY}.trr  -n ${INDEX_INPUT}.ndx  -od ${OUTPUT}.vxg
+
+Where ``${INPUT_TRAJECTORY}.trr`` is the trajectory file of the simulation for 
+which the distances are being calculated and ``${INDEX_INPUT}.ndx`` is the index file that you 
+produced using ``make_ndx``. You will get a prompt asking for which group you would like to select. You will need to
+select two groups. It will then print out a timeseries of the minimum distance between the two groups to the specified output file.
+
+Additional commonly used options are the ``-max`` flag which compute the maxiumum distance instead of the minimum. And the ``-pi`` option
+which calulate the minimum distance of a group to its peridic image. For this you only specify one group in the prompt and you will need to provide
+the topology file ``-s ${INPUT_TOPOLOGY}.tpr``.
+
+The third distance tool is `gmx pairdist <https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pairdist.html>`_ which calculates pairwise
+distance between one reference slection and one or more other selections.
+
+.. code-block:: bash
+
+  gmx pairdist -f ${INPUT_TRAJECTORY}.trr -ref <reference selection> -sel <other selection> -o ${OUTPUT}.xvg
+
+Where ``${INPUT_TRAJECTORY}.trr`` is the trajectory file of the simulation for 
+which the distances are being calculated, `<refernece selection>` are the reference positions to calculate distances from, and `<other selection>` are 
+the positions to calculate distances for. More information 
+on selections can be found in the gromacs manual `selections <https://manual.gromacs.org/documentation/current/onlinehelp/selections.html>`_ page.
+An example the following command will compute the minimum distance at each timestep between the carbon atoms and the nitrogen atoms.
+
+.. code-block:: bash
+
+    gmx pairdist -f ${INPUT_TRAJECTORY}.trr -ref "atomname C" -sel "atomname N"
+
+By default the result is grouped over all atoms in the selection so one number (the minimum distance between the groups) is returned for each timestep in the trajectory. Additional options to the command can give the full list of pairwise distances, see `gmx pairdist <https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pairdist.html>`_ .
+
+
+
 
 -----------------
 Further resources

@@ -245,6 +245,7 @@ Things to investigate:
 - For large systems using many nodes then the use of Hybrid OpenMP/MPI cat offer increased performance over pure MPI.
 
 GPU specific notes:
+
 - For GPU systems you can try different GPU offload scenarios.
 - For GPU systems it is generally best to have 1 MPI rank or 1 thread-MPI rank per GPU, but this may not always be the case.
 - For GPU systems the parallel efficiency beyond 1 GPU is often poor, you will not see the same strong scaling as on CPU only systems. However the performance on 1 GPU should be greater than on an equivalent CPU node.
